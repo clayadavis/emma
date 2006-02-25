@@ -1,0 +1,6 @@
+emma (0.1) unstable; urgency=low
+  * copied yamysqlfront.glade to emma.glade
+  * connect first signal handlers in menubar
+    
+ -- Florian Schmidt <schmidt_florian@gmx.de>  Sun, 15 Jan 2006 17:50:07 +0100
+
