@@ -1,3 +1,15 @@
+emma (0.2) unstable; urgency=low
+  * table view
+  * query result popup
+  * order by click
+  * field condition filter
+  * local regex search
+  * append row
+  * delete row
+  * edit row
+    
+ -- Florian Schmidt <schmidt_florian@gmx.de>  Sun, 26 Feb 2006 01:45:54 +0100
+
 emma (0.1) unstable; urgency=low
   * copied yamysqlfront.glade to emma.glade
   * connect first signal handlers in menubar

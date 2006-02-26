@@ -9,6 +9,7 @@ class mysql_db:
 		self.name = name
 		self.id = id
 		self.expanded = False
+		self.status_headers = []
 		self.tables = {}
 		
 	def refresh(self):
@@ -17,10 +18,13 @@ class mysql_db:
 		new_tables = []
 		
 		result = self.handle.store_result()
+		self.status_headers = []
+		for h in result.describe():
+			self.status_headers.append(h[0])
 		old = dict(zip(self.tables.keys(), range(len(self.tables))))
 		for row in result.fetch_row(0):
 			if not row[0] in old:
-				print "new table", row[0]
+				#print "new table", row[0]
 				self.tables[row[0]] = mysql_table(self, row)
 				new_tables.append(row[0])
 			else:

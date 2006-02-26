@@ -80,6 +80,17 @@ class Emma:
 		self.local_search_start_at_first_row = self.xml.get_widget("search_start_at_first_row")
 		self.local_search_case_sensitive = self.xml.get_widget("search_case_sensitive")
 
+		self.clipboard = gtk.Clipboard(gtk.gdk.display_get_default(), "CLIPBOARD")
+		self.pri_clipboard = gtk.Clipboard(gtk.gdk.display_get_default(), "PRIMARY")
+		
+		self.field_edit = self.xml.get_widget("field_edit")
+		self.field_edit_content = self.xml.get_widget("edit_field_content")
+
+		self.table_property_labels = []
+		self.table_property_entries = []
+		self.table_description_size = (0, 0)
+		self.table_description = self.xml.get_widget("table_description")
+		
 		self.tooltips = gtk.Tooltips()
 		self.hosts = {}
 		self.sort_timer_running = False
@@ -341,7 +352,11 @@ class Emma:
 			if not where: where = None
 			if not col_num is None:
 				value = self.current_query.model.get_value(row_iter, col_num)
-				field = fields[col_num]
+				print col_num, fields
+				if wildcard:
+					field = th.field_order[col_num]
+				else:
+					field = fields[col_num]
 		else:
 			where = possible_primary + possible_unique
 			
@@ -449,20 +464,92 @@ class Emma:
 
 	def on_query_change_data(self, cellrenderer, path, new_value, col_num):
 		q = self.current_query
-		q.apply_record.set_sensitive(False)
+		row_iter = q.model.get_iter(path)
+		if q.append_iter and q.model.iter_is_valid(q.append_iter) and q.model.get_path(q.append_iter) == q.model.get_path(row_iter):
+			q.filled_fields[q.treeview.get_column(col_num).get_title().replace("__", "_")] = new_value
+			q.model.set_value(row_iter, col_num, new_value)
+			return
+		
 		table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
-		# todo append
-		#~ if(queries[current_query].view_model->iter_is_valid(append_row) && append_row == output_row_iter) {
-			#~ filled_fields[col_num] = edit_field;
-			#~ ((*output_row_iter)[queries[current_query].view_mc->data[col_num]]) = b;
-			#~ apply_record_tool->set_sensitive(true);
-			#~ return;
-		#~ }
 		if new_value == value:
 			return
 		update_query = "update `%s` set `%s`='%s' where %s limit 1" % (table, field, self.current_host.escape(new_value), where)
 		if self.current_host.query(update_query):
-			self.current_query.model.set_value(row_iter, col_num, new_value)
+			q.model.set_value(row_iter, col_num, new_value)
+			return True
+		return False
+		
+	def on_delete_record_tool_clicked(self, button):
+		q = self.current_query
+		path, column = q.treeview.get_cursor()
+		if not path: return
+		row_iter = q.model.get_iter(path)
+		if q.append_iter and q.model.iter_is_valid(q.append_iter) and q.model.get_path(q.append_iter) == q.model.get_path(row_iter):
+			q.append_iter = None
+			q.apply_record.set_sensitive(False)
+		else:
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path)
+			if not table or not where:
+				show_message("delete record", "could not delete this record!?")
+				return
+			update_query = "delete from `%s` where %s limit 1" % (table, where)
+			if not self.current_host.query(update_query):
+				return
+		if not q.model.remove(row_iter):
+			row_iter = q.model.get_iter_first()
+			while row_iter:
+				new = q.model.iter_next(row_iter)
+				if new is None:
+					break
+				row_iter = new
+		if row_iter:
+			q.treeview.set_cursor(q.model.get_path(row_iter))
+			
+	def on_add_record_tool_clicked(self, button):
+		q = self.current_query
+		if not q.add_record.get_property("sensitive"):
+			return
+			
+		path, column = q.treeview.get_cursor()
+		if path:
+			iter = q.model.insert_after(q.model.get_iter(path))
+		else:
+			iter = q.model.append()
+		q.treeview.grab_focus()
+		q.treeview.set_cursor(q.model.get_path(iter))
+		q.filled_fields = dict()
+		q.append_iter = iter
+		q.apply_record.set_sensitive(True)
+		
+	def on_apply_record_tool_clicked(self, button):
+		q = self.current_query
+		if not q.append_iter:
+			return
+		query = ""
+		for field, value in q.filled_fields.iteritems():
+			if query: query += ", "
+			query += "%s='%s'" % (self.escape_fieldname(field), self.current_host.escape(value))
+		if query: 
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source)
+			update_query = "insert into `%s` set %s" % (table, query)
+			if not self.current_host.query(update_query):
+				return False
+				
+			# todo: use insert_id() to retrieve the complete inserted record and set correct field values!
+		else:
+			q.model.remove(q.append_iter)
+		q.append_iter = None
+		q.apply_record.set_sensitive(False)
+		return True
+		
+	def on_query_view_cursor_changed(self, tv):
+		q = self.current_query
+		if not q.append_iter:
+			return
+		path, column = q.treeview.get_cursor()
+		if path == q.model.get_path(q.append_iter):
+			return
+		self.on_apply_record_tool_clicked(None)
 		
 	def on_execute_query_clicked(self, button = None, query = None):
 		if not self.current_query: return
@@ -538,7 +625,6 @@ class Emma:
 			if appendable_result:
 				appendable = True
 				q.editable = self.is_query_editable(thisquery, appendable_result)
-			
 			print "appendable: %s, editable: %s" % (appendable, q.editable)
 			
 			ret = host.query(thisquery)
@@ -578,9 +664,10 @@ class Emma:
 				continue
 		
 			# query with result
+			q.append_iter = None
 			q.local_search.set_sensitive(True)
 			q.add_record.set_sensitive(appendable)
-			self.xml.get_widget("add_record").set_sensitive(appendable)
+			q.delete_record.set_sensitive(q.editable)
 			select = True
 			q.last_source = thisquery
 			# get sort order!
@@ -695,105 +782,10 @@ class Emma:
 	def on_load_query_clicked(self, button):
 		print __name__
 		
-	def on_pretty_format_clicked(self, button):
-		print __name__
-		
-	def on_compress_format_clicked(self, button):
-		print __name__
-		
-	def on_query_font_clicked(self, button):
-		print __name__
-		
-	def on_newquery_button_clicked(self, button):
-		print __name__
-		
-	def on_closequery_button_clicked(self, button):
-		print __name__
-		
-	def on_rename_query_tab_clicked(self, button):
-		print __name__
-		
-	def on_processlist_refresh_value_change(self, button):
-		value = button.get_value()
-		if self.processlist_timer_running: return
-		self.processlist_timer_running = True
-		self.processlist_timer_interval = value
-		gobject.timeout_add(int(value * 1000), self.on_processlist_refresh_timeout, button)
-		
-	def on_processlist_refresh_timeout(self, button):
-		value = button.get_value()
-		if value < 0.1:
-			self.processlist_timer_running = False
-			return False
-		self.refresh_processlist()
-		if value != self.processlist_timer_interval:
-			self.processlist_timer_running = False
-			self.on_processlist_refresh_value_change(button)
-			return False
-		return True
-
-	def on_processlist_button_release(self, tv, event):
-		if not event.button == 3: return False
-		res = tv.get_path_at_pos(int(event.x), int(event.y));
-		if not res: return False
-		self.xml.get_widget("processlist_popup").popup(None, None, None, event.button, event.time)
-		
-	def show_message(self, title, message):
-		dialog = gtk.MessageDialog(self.mainwindow, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, message)
-		dialog.set_title(title)
-		dialog.run()
-		dialog.hide()
-		
-	def render_connections_pixbuf(self, column, cell, model, iter):
-		d = model.iter_depth(iter)
-		o = model.get_value(iter, 0)
-		if d == 0:
-			if o.connected:
-				cell.set_property("pixbuf", self.icons["host"])
-			else:
-				cell.set_property("pixbuf", self.icons["offline_host"])
-		elif d == 1:
-			cell.set_property("pixbuf", self.icons["db"])
-		elif d == 2:
-			cell.set_property("pixbuf", self.icons["table"])
-		elif d == 3:
-			cell.set_property("pixbuf", self.icons["field"])
-		else:
-			print "unknown depth", d," for render_connections_pixbuf with object", o
-		
-	def render_connections_text(self, column, cell, model, iter):
-		d = model.iter_depth(iter)
-		o = model.get_value(iter, 0)
-		if d == 0:
-			if o.connected:
-				cell.set_property("text", o.name)
-			else:
-				cell.set_property("text", "(%s)" % o.name)
-		elif d == 3: #fields are only strings
-			cell.set_property("text", "%s %s" % (o[0], o[1]))
-		else: # everything else has a name
-			cell.set_property("text", o.name)
-			#print "unknown depth", d," for render_connections_pixbuf with object", o
-			
-	def render_mysql_string(self, column, cell, model, iter, id):
-		o = model.get_value(iter, id)
-		if o: 
-			cell.set_property("background", None)
-			cell.set_property("text", o)
-		else:
-			cell.set_property("background", self.config["null_color"])
-			cell.set_property("text", "")
-		
-	def config_get_bool(self, name):
-		value = self.config[name].lower()
-		if value == "yes": return True
-		if value == "y": return True
-		if value == "1": return True
-		if value == "true": return True
-		if value == "t": return True
-		return False
-		
 	def on_local_search_button_clicked(self, button, again = False):
+		if not self.current_query.local_search.get_property("sensitive"):
+			return
+			
 		query_view = self.current_query.treeview
 		self.local_search_start_at_first_row.set_active(False)
 		if not again or not self.local_search_entry.get_text():
@@ -835,149 +827,31 @@ class Emma:
 			start = tm.iter_next(start)
 		self.show_message("local regex search", "sorry, no match found!\ntry to search from the beginning or execute a less restrictive query...")
 		
-	def load_config(self):
-		for i in ["HOME", "USERPROFILE"]: 
-			filename = os.getenv(i)
-			if filename: break
-		if not filename:
-			filename = "."
-		filename += "/.emma"
-		# todo get_charset(self.config["db_codeset"]);
-		# printf("system charset: '%s'\n", self.config["db_codeset"].c_str());
-		# syntax_highlight_functions: grep -E -e "^[ \\t]+<code class=\"literal[^>]*>[^\(<90-9]+\(" mysql_fun.html fun*.html | sed -r -e "s/^[^<]*<code[^>]+>//" -e "s/\(.*$/,/" | tr "[:upper:]" "[:lower:]" | sort | uniq | xargs echo
-		self.config = {
-			"null_color": "#00eeaa",
-			"autorefresh_interval_table": "300",
-			"column_sort_use_newline": "true",
-			"query_text_font": "Monospace 8",
-			"query_text_wrap": "false",
-			"query_result_font": "Monospace 8",
-			"query_log_max_entry_length": "1024",
-			"result_view_column_width_min": "70",
-			"result_view_column_width_max": "300",
-			"result_view_column_resizable": "false",
-			"result_view_column_sort_timeout": "750",
-			"syntax_highlight_keywords": "lock, unlock, tables, kill, truncate table, alter table, host, database, field, comment, show table status, show index, add index, drop index, add primary key, add unique, drop primary key, show create table, values, insert into, into, select, show databases, show tables, show processlist, show tables, from, where, order by, group by, limit, left, join, right, inner, after, alter, as, asc, before, begin, case, column, change column, commit, create table, default, delete, desc, describe, distinct, drop, table, first, grant, having, insert, interval, insert into, limit, null, order, primary key, primary, auto_increment, rollback, set, start, temporary, union, unique, update, create database, use, key, type, uniqe key, on, type, not, unsigned",
-			"syntax_highlight_functions": "date_format, now, floor, rand, hour, if, minute, month, right, year, isnull",
-			"syntax_highlight_functions": "abs, acos, adddate, addtime, aes_decrypt, aes_encrypt, ascii, asin, atan, benchmark, bin, bit_length, ceil, ceiling, char, character_length, char_length, charset, coercibility, collation, compress, concat, concat_ws, connection_id, conv, convert_tz, cos, cot, crypt, curdate, current_date, current_time, current_timestamp, current_user, curtime, database, date, date_add, datediff, date_format, date_sub, day, dayname, dayofmonth, dayofweek, dayofyear, decode, default, degrees, des_decrypt, des_encrypt, elt, encode, encrypt, exp, export_set, extract, field, find_in_set, floor, format, found_rows, from_days, from_unixtime, get_format, get_lock, hex, hour, if, ifnull, inet_aton, inet_ntoa, insert, instr, is_free_lock, is_used_lock, last_day, last_insert_id, lcase, left, length, ln, load_file, localtime, localtimestamp, locate, log, lower, lpad, ltrim, makedate, make_set, maketime, master_pos_wait, microsecond, mid, minute, mod, month, monthname, mysql_insert_id, now, nullif, oct, octet_length, old_password, ord, order by rand, password, period_add, period_diff, pi, position, pow, power, quarter, quote, radians, rand, release_lock, repeat, replace, reverse, right, round, row_count, rpad, rtrim, schema, second, sec_to_time, session_user, sha, sign, sin, sleep, soundex, space, sqrt, str_to_date, subdate, substr, substring, substring_index, subtime, sysdate, system_user, tan, time, timediff, time_format, timestamp, timestampadd, timestampdiff, time_to_sec, to_days, trim, truncate, ucase, uncompress, uncompressed_length, unhex, unix_timestamp, upper, user, utc_date, utc_time, utc_timestamp, uuid, version, week, weekday, weekofyear, year, yearweek",
-			"syntax_highlight_datatypes": "binary, bit, blob, boolean, char, character, dec, decimal, double, float, int, integer, numeric, smallint, timestamp, varchar, datetime, text, mediumint, bigint, tinyint, date",
-			"syntax_highlight_operators": "not, and, or, like, \\<, \\>",
-			"syntax_highlight_fg_keyword": "#00007F",
-			"syntax_highlight_fg_function": "darkblue",
-			"syntax_highlight_fg_datatype": "#AA00AA",
-			"syntax_highlight_fg_operator": "#0000aa",
-			"syntax_highlight_fg_double-quoted-string": "#7F007F",
-			"syntax_highlight_fg_single-quoted-string": "#9F007F",
-			"syntax_highlight_fg_backtick-quoted-string": "#BF007F",
-			"syntax_highlight_fg_number": "#007F7F",
-			"syntax_highlight_fg_comment": "#007F00",
-			"syntax_highlight_fg_error": "red",
-			"pretty_print_uppercase_keywords": "false",
-			"pretty_print_uppercase_operators": "false",
-			"extern_mysqldump": "mysqldump",
-			"extern_mysqldump_database_dump": "-a -C -e --databases -Q -v -r ",
-			"extern_mysqldump_table_dump": "-a -C -e -Q -v -r ",
-			"extern_mysqldump_host_dump": "-a -C -e -Q -v -A -r ",
-			"template1_last 150 records": "select * from $table$ order by $primary_key$ desc limit 150",
-			"template2_500 records in fs-order": "select * from $table$ limit 500",
-			"template3_quick filter 500": "select * from $table$ where $field_conditions$ limit 500"
-		}
-		first = False
-		try:
-			fp = file(filename, "r")
-			line_no = 0
-			for line in fp:
-				line_no += 1
-				line.lstrip(" \t\r\n")
-				if not line: continue
-				if line[0] == '#': continue
-				varval = line.split("=", 1)
-				if len(varval) != 2:
-					print "skipping invalid self.config line %d: '%s'" % (line_no, line)
-					continue
-				self.config[varval[0].strip("\r\n \t")] = varval[1].strip("\r\n \t")
-			fp.close()
-		except:
-			print "got exception:", sys.exc_type, sys.exc_value
-			first = True
-			self.config["connection_localhost"] = "localhost,localhost,root,,"
-
-		self.first_template = None
-		keys = self.config.keys()
-		keys.sort()
-		for name in keys:
-			value = self.config[name]
-			prefix = "connection_"
-			if name.startswith(prefix):
-				v = value.split(",")
-				port = ""
-				p = v[0].rsplit(":", 1)
-				if len(p) == 2:
-					port = p[1]
-					v[0] = p[0]
-				self.add_mysql_host(name[len(prefix):], v[0], port, v[1], v[2], v[3], first)
-			
-			prefix = "template";
-			if name.startswith(prefix):
-				value = value.replace("`$primary_key$`", "$primary_key$")
-				value = value.replace("`$table$`", "$table$")
-				value = value.replace("`$field_conditions$`", "$field_conditions$")
-				self.config[name] = value
-				if not self.first_template:
-					self.first_template = value
-				p = name.split("_", 1)
-				button = gtk.ToolButton(gtk.STOCK_EXECUTE)
-				button.set_tooltip(self.tooltips, "%s\n%s" % (p[1], value))
-				button.connect("clicked", self.on_template, value)
-				self.xml.get_widget("query_toolbar").insert(button, -1)
-				button.show()
-	
-	def add_mysql_host(self, name, hostname, port, user, password, database, isfirst):
-		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database)
-		iter = self.connections_model.append(None, [host])
-		host.set_update_ui(self.redraw_host, iter)
-	
-	def add_sql_log(self, log):
-		max_len = int(self.config["query_log_max_entry_length"])
-		if len(log) > max_len:
-			log = log[0:max_len] + "\n/* query with length of %d bytes truncated. */" % len(log);
+	def on_pretty_format_clicked(self, button):
+		print __name__
 		
-		# query = db_to_utf8(log);
-		# query = syntax_highlight_markup(query);
-		# query = rxx.replace(query, "[\r\n\t ]+", " ", Regexx::global);
-		if not log: return
-			
-		now = time.time()
-		now = int((now - int(now)) * 100)
-		timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-		if now: timestamp = "%s.%02d" % (timestamp, now)
-		iter = self.sql_log_model.append((timestamp, log))
-		self.sql_log_tv.scroll_to_cell(self.sql_log_model.get_path(iter))
-		self.xml.get_widget("message_notebook").set_current_page(0)
+	def on_compress_format_clicked(self, button):
+		print __name__
 		
-	def add_msg_log(self, log):
-		if not log: return
+	def on_query_font_clicked(self, button):
+		print __name__
 		
-		log.replace(
-			"You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near",
-			"syntax error at "
-		)
-		now = time.time()
-		now = int((now - int(now)) * 100)
-		timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-		if now: timestamp = "%s.%02d" % (timestamp, now)
-		iter = self.msg_model.append((timestamp, log))
-		self.msg_tv.scroll_to_cell(self.msg_model.get_path(iter))
-		self.xml.get_widget("message_notebook").set_current_page(1)
-
-	def get_selected_table(self):
-		path, column = self.connections_tv.get_cursor()
-		depth = len(path)
-		iter = self.connections_model.get_iter(path)
-		if depth == 3:
-			return self.connections_model.get_value(iter, 0)
-		return None
-
+	def on_newquery_button_clicked(self, button):
+		print __name__
+		
+	def on_closequery_button_clicked(self, button):
+		print __name__
+		
+	def on_rename_query_tab_clicked(self, button):
+		print __name__
+		
+	def on_processlist_refresh_value_change(self, button):
+		value = button.get_value()
+		if self.processlist_timer_running: return
+		self.processlist_timer_running = True
+		self.processlist_timer_interval = value
+		gobject.timeout_add(int(value * 1000), self.on_processlist_refresh_timeout, button)
+		
 	def on_fc_reset_clicked(self, button):
 		for i in range(self.fc_count):
 			self.fc_entry[i].set_text("")
@@ -989,6 +863,466 @@ class Emma:
 				self.fc_op_combobox[i].set_active(-1)
 			if i: self.fc_logic_combobox[i - 1].set_active(0)
 	
+	def on_quit_activate(self, item):
+		gtk.main_quit()
+		
+	def on_about_activate(self, item):
+		aboutdialog = self.xml.get_widget("aboutdialog")
+		aboutdialog.set_version(version)
+		aboutdialog.run()
+		aboutdialog.hide()
+
+	def on_changelog_activate(self, item):
+		fp = file("changelog")
+		changelog = fp.read()
+		fp.close()
+		w = self.xml.get_widget("changelog_window")
+		tv = self.xml.get_widget("changelog_text")
+		tv.get_buffer().set_text(changelog)
+		w.connect('delete-event', self.on_changelog_delete)
+		w.show()
+		
+	def on_changelog_delete(self, window, event):
+		window.hide()
+		return True
+		
+	def on_kill_process(self, button):
+		path, column = self.processlist_tv.get_cursor()
+		if not path or not self.current_host: return
+		iter = self.processlist_model.get_iter(path)
+		process_id = self.processlist_model.get_value(iter, 0)
+		if not self.current_host.query("kill %s" % process_id):
+			self.show_message("sorry", "there was an error while trying to kill process_id %s!" % process_id)
+	
+	def on_sql_log_activate(self, *args):
+		print args
+		
+	def on_sql_log_button_press(self, tv, event):
+		if not event.button == 3: return False
+		res = tv.get_path_at_pos(int(event.x), int(event.y));
+		if not res: return False
+		self.xml.get_widget("sqllog_popup").popup(None, None, None, event.button, event.time);
+		return True
+		
+	def on_connections_button_release(self, tv, event):
+		if not event.button == 3: return False
+		res = tv.get_path_at_pos(int(event.x), int(event.y));
+		menu = None
+		if not res or len(res[0]) == 1:	
+			self.xml.get_widget("modify_connection").set_sensitive(not not res)
+			self.xml.get_widget("delete_connection").set_sensitive(not not res)
+			connected_host = False
+			if res:
+				iter = self.connections_model.get_iter(res[0])
+				# todo if res[0].size() == 1 and (dynamic_cast<mysql_host_entry*>((connections_entry*)(*iter)[connections_mc->entry]))->is_connected())
+				# todo	connected_host = true;
+				
+			self.xml.get_widget("new_database").set_sensitive(connected_host)
+			self.xml.get_widget("refresh_host").set_sensitive(connected_host)
+			self.xml.get_widget("dump_all_databases").set_sensitive(connected_host)
+			menu = self.xml.get_widget("connection_menu")
+		elif len(res[0]) == 2:
+			menu = self.xml.get_widget("database_popup")
+		elif len(res[0]) == 3:
+			menu = self.xml.get_widget("table_popup")
+		else: print "no popup at path depth %d\n" % res[0].size()
+		if menu:
+			menu.popup(None, None, None, event.button, event.time)
+		return True
+		
+	def on_connections_tv_cursor_changed(self, tv):
+		path, column = tv.get_cursor()
+		nb = self.xml.get_widget("main_notebook")
+		if len(path) == 3 and nb.get_current_page() == 3:
+			self.update_table_view(path)
+	
+	# def on_main_notebook_change_current_page(self, *args):
+	def on_nb_change_page(self, np, pointer, page):
+		path, column = self.connections_tv.get_cursor()
+		if len(path) == 3 and page == 3:
+			self.update_table_view(path)
+		
+	def update_table_view(self, path = None):
+		if not path:
+			path, column = tv.get_cursor()
+			if len(path) != 3: return
+		iter = self.connections_model.get_iter(path)
+		th = self.connections_model.get_value(iter, 0)
+		
+		table = self.xml.get_widget("table_properties")
+		prop_count = len(th.props)
+		if len(self.table_property_labels) != prop_count:
+			for c in self.table_property_labels:
+				table.remove(c)
+			for c in self.table_property_entries:
+				table.remove(c)
+			self.table_property_labels = []
+			self.table_property_entries = []
+			table.resize(prop_count, 2)
+			r = 0
+			for h, p in zip(th.db.status_headers, th.props):
+				l = gtk.Label(h)
+				l.set_alignment(0, 0.5)
+				e = gtk.Entry()
+				e.set_editable(False)
+				if p is None: p = ""
+				e.set_text(p)
+				table.attach(l, 0, 1, r, r + 1, gtk.FILL, 0)
+				table.attach(e, 1, 2, r, r + 1, gtk.EXPAND|gtk.FILL|gtk.SHRINK, 0)
+				l.show()
+				e.show()
+				self.table_property_labels.append(l)
+				self.table_property_entries.append(e)
+				r += 1
+		else:
+			r = 0
+			for h, p in zip(th.db.status_headers, th.props):
+				l = self.table_property_labels[r]
+				e = self.table_property_entries[r]
+				l.set_label(h)
+				if p is None: p = ""
+				e.set_text(p)
+				r += 1
+
+		tv = self.xml.get_widget("table_textview")
+		tv.get_buffer().set_text(th.get_create_table())
+	
+		t = self.table_description
+		for c in t.get_children():
+			self.table_description.remove(c)
+		self.table_description.resize(len(th.describe_headers), len(th.fields) + 1)
+		c = 0
+		for h in th.describe_headers:
+			l = gtk.Label(h)
+			t.attach(l, c, c + 1, 0, 1, gtk.FILL, 0)
+			l.show()
+			c += 1
+		r = 1
+		for fn in th.field_order:
+			v = th.fields[fn]
+			for c in range(len(th.describe_headers)):
+				s = v[c]
+				if s is None: s = ""
+				l = gtk.Label(s)
+				t.attach(l, c, c + 1, r, r + 1, gtk.FILL, 0)
+				l.set_alignment(0, 0.5)
+				l.set_selectable(True)
+				l.show()
+			r += 1
+		
+	def on_connections_row_activated(self, tv, path, col):
+		depth = len(path)
+		iter = self.connections_model.get_iter(path)
+		o = self.connections_model.get_value(iter, 0)
+		
+		nb = self.xml.get_widget("main_notebook")
+		if depth == 1: # host
+			self.current_host = host = o
+			if host.connected:
+				current_host = None
+				host.close()
+			else:
+				host.connect()
+				if not host.connected: return
+				host.refresh()
+				self.refresh_processlist()
+				nb.set_current_page(1)
+			self.redraw_host(host, iter)
+			self.connections_tv.expand_row(path, False)
+			
+		elif depth == 2: # database
+			self.current_host = o.host
+			new_tables = o.refresh()
+			self.redraw_db(o, iter, new_tables);
+			self.connections_tv.expand_row(path, False)
+			# self.connections_tv.expand_row(path, False)
+			# todo update_query_db()
+			
+		elif depth == 3: # table
+			self.current_host = host = o.db.host
+			host.select_database(o.db)
+			table = o
+			if not table.fields or (time.time() - table.last_field_read) > self.config["autorefresh_interval_table"]:
+				table.refresh()
+				self.redraw_table(o, iter)
+			if self.first_template:
+				nb.set_current_page(4)
+				self.on_template(None, self.first_template)
+			elif nb.get_current_page() < 3:
+				nb.set_current_page(3)				
+			
+			#self.connections_tv.expand_row(path, False)
+			# todo update_query_db();
+			# todo if(!doubleclick) update_table(e, i)
+		else:
+			print "No Handler for tree-depth", depth
+		return
+		
+	def on_mainwindow_key_release_event(self, window, event):
+		#print "state: %d, keyval: 0x%04x, text: '%s'" % (event.state, event.keyval, event.string)
+		
+		#~ RefPtr<Gnome::Glade::Xml> xml = queries[current_query].xml;
+		#~ xml_get_decl_widget_from(xml, local_search_button, Gtk::ToolButton);
+			
+		#~ if(event->keyval == GDK_Tab) {
+			#~ return do_auto_completion();
+		#~ } else 
+		if event.keyval == keysyms.F9 or (event.state == 4 and event.keyval == keysyms.Return):
+			self.on_execute_query_clicked(None)
+			return True
+		#~ } else if(event->keyval == GDK_F6) {
+			#~ query_notebook->set_current_page((current_query + 1) % queries.size());
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval == GDK_t) {
+			#~ new_query_tab();
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval == GDK_w) {
+			#~ close_query_tab();
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval == GDK_s) {
+			#~ on_save_query();
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval == GDK_o) {
+			#~ on_load_query();
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval == GDK_p) {
+			#~ on_pretty_format();
+			#~ return true;
+		elif event.keyval == keysyms.F3:
+			self.on_local_search_button_clicked(None, True)
+			return True
+		#~ } else if(event->state & 4 && event->keyval == GDK_u) {
+			#~ xml_get_decl_widget_from(xml, query_text, Gtk::TextView);
+			
+			#~ TextBuffer::iterator start, end;
+			#~ query_text->get_buffer()->get_selection_bounds(start, end);
+			#~ string text = query_text->get_buffer()->get_text(start, end);
+			#~ text = to_lower(text);
+			#~ query_text->get_buffer()->erase_selection();
+			#~ query_text->get_buffer()->get_selection_bounds(start, end);
+			#~ query_text->get_buffer()->insert(start, text);
+			#~ query_text->get_buffer()->get_selection_bounds(start, end);
+			#~ start = end;
+			#~ end.backward_chars(text.size());
+			#~ query_text->get_buffer()->select_range(start, end);
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval == GDK_U) {
+			#~ xml_get_decl_widget_from(xml, query_text, Gtk::TextView);
+			
+			#~ TextBuffer::iterator start, end;
+			#~ query_text->get_buffer()->get_selection_bounds(start, end);
+			#~ string text = to_upper(query_text->get_buffer()->get_text(start, end));
+			#~ query_text->get_buffer()->erase_selection();
+			#~ query_text->get_buffer()->get_selection_bounds(start, end);
+			#~ query_text->get_buffer()->insert(start, text);
+			#~ query_text->get_buffer()->get_selection_bounds(start, end);
+			#~ start = end;
+			#~ end.backward_chars(text.size());
+			#~ query_text->get_buffer()->select_range(start, end);
+			
+			#~ return true;
+		#~ } else if(event->state & 4 && event->keyval >= GDK_0 && event->keyval <= GDK_9) {
+			#~ int page = event->keyval - GDK_0;
+			#~ if(page == 0) page = 10;
+			#~ page--;
+			#~ if(page < query_notebook->get_n_pages())
+				#~ query_notebook->set_current_page(page);
+			#~ // on_parse_query("vos2sql");
+		#~ }
+		#~ return false;
+		
+	def on_query_view_key_press_event(self, tv, event):
+		q = self.current_query
+		path, column = q.treeview.get_cursor()
+		if event.keyval == keysyms.F2:
+			q.treeview.set_cursor(path, column, True)
+			return True
+		
+		iter = q.model.get_iter(path)
+		if event.keyval == keysyms.Down and not q.model.iter_next(iter):
+			if q.append_iter and not self.on_apply_record_tool_clicked(None):
+				return True
+			self.on_add_record_tool_clicked(None)
+			return True
+			
+	def on_query_view_button_release_event(self, tv, event):
+		if not event.button == 3: return False
+		res = tv.get_path_at_pos(int(event.x), int(event.y));
+		menu = self.xml.get_widget("result_popup")
+		if res:
+			sensitive = True
+		else:
+			sensitive = False
+		for c in menu.get_children():
+			for s in ["edit", "set ", "delete"]:
+				if c.name.find(s) != -1:
+					c.set_sensitive(sensitive and self.current_query.editable)
+					break
+			else:
+				if c.name not in ["add_record"]:
+					c.set_sensitive(sensitive)
+				else:
+					c.set_sensitive(self.current_query.add_record.get_property("sensitive"))
+		#menu.popup(None, None, None, event.button, event.time)
+		menu.popup(None, None, None, 0, event.time) # strange!
+		return True
+		
+	def on_query_popup(self, item):
+		q = self.current_query
+		path, column = q.treeview.get_cursor()
+		iter = q.model.get_iter(path)
+		
+		if item.name == "copy_field_value":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			value = q.model.get_value(iter, col_num)
+			self.clipboard.set_text(value)
+			self.pri_clipboard.set_text(value)
+		elif item.name == "copy_record_as_csv":
+			col_max = q.model.get_n_columns()
+			value = ""
+			for col_num in range(col_max):
+				if value: value += self.config["copy_record_as_csv_delim"]
+				v = q.model.get_value(iter, col_num)
+				if not v is None: value += v
+			self.clipboard.set_text(value)
+			self.pri_clipboard.set_text(value)
+		elif item.name == "copy_column_as_csv":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			value = ""
+			iter = q.model.get_iter_first()
+			while iter:
+				if value: value += self.config["copy_record_as_csv_delim"]
+				v = q.model.get_value(iter, col_num)
+				if not v is None: value += v
+				iter = q.model.iter_next(iter)
+			self.clipboard.set_text(value)
+			self.pri_clipboard.set_text(value)
+		elif item.name == "copy_column_names":
+			value = ""
+			for col in q.treeview.get_columns():
+				if value: value += self.config["copy_record_as_csv_delim"]
+				value += col.get_title().replace("__", "_")
+			self.clipboard.set_text(value)
+			self.pri_clipboard.set_text(value)
+		elif item.name == "edit_field_value":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
+			self.field_edit.set_title("edit field %s in table %s where %s" % (field, table, where))
+			b = self.field_edit_content.get_buffer()
+			b.set_text(value)
+			answer = self.field_edit.run()
+			self.field_edit.hide();
+			if answer != gtk.RESPONSE_OK:
+				return
+			new_value = b.get_text(b.get_start_iter(), b.get_end_iter())
+			if new_value == value:
+				return
+			update_query = "update `%s` set `%s`='%s' where %s limit 1" % (table, field, self.current_host.escape(new_value), where)
+			if self.current_host.query(update_query):
+				q.model.set_value(row_iter, col_num, new_value)
+		elif item.name == "set_value_null":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
+			update_query = "update `%s` set `%s`=NULL where %s limit 1" % (table, field, where)
+			if self.current_host.query(update_query):
+				q.model.set_value(row_iter, col_num, None)
+		elif item.name == "set_value_now":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
+			update_query = "update `%s` set `%s`=now() where %s limit 1" % (table, field, where)
+			if not self.current_host.query(update_query):
+				return
+			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
+			result = self.current_host.handle.store_result().fetch_row(0)
+			if len(result) < 1:
+				print "error: can't find modfied row!?"
+				return
+			q.model.set_value(row_iter, col_num, result[0][0])
+		elif item.name == "set_value_unix_timestamp":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
+			update_query = "update `%s` set `%s`=unix_timestamp(now()) where %s limit 1" % (table, field, where)
+			if not self.current_host.query(update_query):
+				return
+			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
+			result = self.current_host.handle.store_result().fetch_row(0)
+			if len(result) < 1:
+				print "error: can't find modfied row!?"
+				return
+			q.model.set_value(row_iter, col_num, result[0][0])
+		elif item.name == "set_value_as_password":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
+			update_query = "update `%s` set `%s`=password('%s') where %s limit 1" % (table, field, self.current_host.escape(value), where)
+			if not self.current_host.query(update_query):
+				return
+			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
+			result = self.current_host.handle.store_result().fetch_row(0)
+			if len(result) < 1:
+				print "error: can't find modfied row!?"
+				return
+			q.model.set_value(row_iter, col_num, result[0][0])
+		elif item.name == "set_value_to_sha":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
+			update_query = "update `%s` set `%s`=sha1('%s') where %s limit 1" % (table, field, self.current_host.escape(value), where)
+			if not self.current_host.query(update_query):
+				return
+			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
+			result = self.current_host.handle.store_result().fetch_row(0)
+			if len(result) < 1:
+				print "error: can't find modfied row!?"
+				return
+			q.model.set_value(row_iter, col_num, result[0][0])
+		
 	def on_template(self, button, t):
 		current_table = self.get_selected_table()
 		current_fc_table = current_table;
@@ -1114,6 +1448,223 @@ class Emma:
 			t = t.replace("$field_conditions$", conditions)
 		self.on_execute_query_clicked(None, t)
 		
+	def on_processlist_refresh_timeout(self, button):
+		value = button.get_value()
+		if value < 0.1:
+			self.processlist_timer_running = False
+			return False
+		self.refresh_processlist()
+		if value != self.processlist_timer_interval:
+			self.processlist_timer_running = False
+			self.on_processlist_refresh_value_change(button)
+			return False
+		return True
+
+	def on_processlist_button_release(self, tv, event):
+		if not event.button == 3: return False
+		res = tv.get_path_at_pos(int(event.x), int(event.y));
+		if not res: return False
+		self.xml.get_widget("processlist_popup").popup(None, None, None, event.button, event.time)
+		
+	def show_message(self, title, message):
+		dialog = gtk.MessageDialog(self.mainwindow, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, message)
+		dialog.set_title(title)
+		dialog.run()
+		dialog.hide()
+		
+	def render_connections_pixbuf(self, column, cell, model, iter):
+		d = model.iter_depth(iter)
+		o = model.get_value(iter, 0)
+		if d == 0:
+			if o.connected:
+				cell.set_property("pixbuf", self.icons["host"])
+			else:
+				cell.set_property("pixbuf", self.icons["offline_host"])
+		elif d == 1:
+			cell.set_property("pixbuf", self.icons["db"])
+		elif d == 2:
+			cell.set_property("pixbuf", self.icons["table"])
+		elif d == 3:
+			cell.set_property("pixbuf", self.icons["field"])
+		else:
+			print "unknown depth", d," for render_connections_pixbuf with object", o
+		
+	def render_connections_text(self, column, cell, model, iter):
+		d = model.iter_depth(iter)
+		o = model.get_value(iter, 0)
+		if d == 0:
+			if o.connected:
+				cell.set_property("text", o.name)
+			else:
+				cell.set_property("text", "(%s)" % o.name)
+		elif d == 3: #fields are only strings
+			cell.set_property("text", "%s %s" % (o[0], o[1]))
+		else: # everything else has a name
+			cell.set_property("text", o.name)
+			#print "unknown depth", d," for render_connections_pixbuf with object", o
+			
+	def render_mysql_string(self, column, cell, model, iter, id):
+		o = model.get_value(iter, id)
+		if not o is None: 
+			cell.set_property("background", None)
+			cell.set_property("text", o)
+		else:
+			cell.set_property("background", self.config["null_color"])
+			cell.set_property("text", "")
+		
+	def config_get_bool(self, name):
+		value = self.config[name].lower()
+		if value == "yes": return True
+		if value == "y": return True
+		if value == "1": return True
+		if value == "true": return True
+		if value == "t": return True
+		return False
+		
+	def load_config(self):
+		for i in ["HOME", "USERPROFILE"]: 
+			filename = os.getenv(i)
+			if filename: break
+		if not filename:
+			filename = "."
+		filename += "/.emma"
+		# todo get_charset(self.config["db_codeset"]);
+		# printf("system charset: '%s'\n", self.config["db_codeset"].c_str());
+		# syntax_highlight_functions: grep -E -e "^[ \\t]+<code class=\"literal[^>]*>[^\(<90-9]+\(" mysql_fun.html fun*.html | sed -r -e "s/^[^<]*<code[^>]+>//" -e "s/\(.*$/,/" | tr "[:upper:]" "[:lower:]" | sort | uniq | xargs echo
+		self.config = {
+			"null_color": "#00eeaa",
+			"autorefresh_interval_table": "300",
+			"column_sort_use_newline": "true",
+			"query_text_font": "Monospace 8",
+			"query_text_wrap": "false",
+			"query_result_font": "Monospace 8",
+			"query_log_max_entry_length": "1024",
+			"result_view_column_width_min": "70",
+			"result_view_column_width_max": "300",
+			"result_view_column_resizable": "false",
+			"result_view_column_sort_timeout": "750",
+			"syntax_highlight_keywords": "lock, unlock, tables, kill, truncate table, alter table, host, database, field, comment, show table status, show index, add index, drop index, add primary key, add unique, drop primary key, show create table, values, insert into, into, select, show databases, show tables, show processlist, show tables, from, where, order by, group by, limit, left, join, right, inner, after, alter, as, asc, before, begin, case, column, change column, commit, create table, default, delete, desc, describe, distinct, drop, table, first, grant, having, insert, interval, insert into, limit, null, order, primary key, primary, auto_increment, rollback, set, start, temporary, union, unique, update, create database, use, key, type, uniqe key, on, type, not, unsigned",
+			"syntax_highlight_functions": "date_format, now, floor, rand, hour, if, minute, month, right, year, isnull",
+			"syntax_highlight_functions": "abs, acos, adddate, addtime, aes_decrypt, aes_encrypt, ascii, asin, atan, benchmark, bin, bit_length, ceil, ceiling, char, character_length, char_length, charset, coercibility, collation, compress, concat, concat_ws, connection_id, conv, convert_tz, cos, cot, crypt, curdate, current_date, current_time, current_timestamp, current_user, curtime, database, date, date_add, datediff, date_format, date_sub, day, dayname, dayofmonth, dayofweek, dayofyear, decode, default, degrees, des_decrypt, des_encrypt, elt, encode, encrypt, exp, export_set, extract, field, find_in_set, floor, format, found_rows, from_days, from_unixtime, get_format, get_lock, hex, hour, if, ifnull, inet_aton, inet_ntoa, insert, instr, is_free_lock, is_used_lock, last_day, last_insert_id, lcase, left, length, ln, load_file, localtime, localtimestamp, locate, log, lower, lpad, ltrim, makedate, make_set, maketime, master_pos_wait, microsecond, mid, minute, mod, month, monthname, mysql_insert_id, now, nullif, oct, octet_length, old_password, ord, order by rand, password, period_add, period_diff, pi, position, pow, power, quarter, quote, radians, rand, release_lock, repeat, replace, reverse, right, round, row_count, rpad, rtrim, schema, second, sec_to_time, session_user, sha, sign, sin, sleep, soundex, space, sqrt, str_to_date, subdate, substr, substring, substring_index, subtime, sysdate, system_user, tan, time, timediff, time_format, timestamp, timestampadd, timestampdiff, time_to_sec, to_days, trim, truncate, ucase, uncompress, uncompressed_length, unhex, unix_timestamp, upper, user, utc_date, utc_time, utc_timestamp, uuid, version, week, weekday, weekofyear, year, yearweek",
+			"syntax_highlight_datatypes": "binary, bit, blob, boolean, char, character, dec, decimal, double, float, int, integer, numeric, smallint, timestamp, varchar, datetime, text, mediumint, bigint, tinyint, date",
+			"syntax_highlight_operators": "not, and, or, like, \\<, \\>",
+			"syntax_highlight_fg_keyword": "#00007F",
+			"syntax_highlight_fg_function": "darkblue",
+			"syntax_highlight_fg_datatype": "#AA00AA",
+			"syntax_highlight_fg_operator": "#0000aa",
+			"syntax_highlight_fg_double-quoted-string": "#7F007F",
+			"syntax_highlight_fg_single-quoted-string": "#9F007F",
+			"syntax_highlight_fg_backtick-quoted-string": "#BF007F",
+			"syntax_highlight_fg_number": "#007F7F",
+			"syntax_highlight_fg_comment": "#007F00",
+			"syntax_highlight_fg_error": "red",
+			"pretty_print_uppercase_keywords": "false",
+			"pretty_print_uppercase_operators": "false",
+			"extern_mysqldump": "mysqldump",
+			"extern_mysqldump_database_dump": "-a -C -e --databases -Q -v -r ",
+			"extern_mysqldump_table_dump": "-a -C -e -Q -v -r ",
+			"extern_mysqldump_host_dump": "-a -C -e -Q -v -A -r ",
+			"template1_last 150 records": "select * from $table$ order by $primary_key$ desc limit 150",
+			"template2_500 records in fs-order": "select * from $table$ limit 500",
+			"template3_quick filter 500": "select * from $table$ where $field_conditions$ limit 500",
+			"copy_record_as_csv_delim": ","
+		}
+		first = False
+		try:
+			fp = file(filename, "r")
+			line_no = 0
+			for line in fp:
+				line_no += 1
+				line.lstrip(" \t\r\n")
+				if not line: continue
+				if line[0] == '#': continue
+				varval = line.split("=", 1)
+				if len(varval) != 2:
+					print "skipping invalid self.config line %d: '%s'" % (line_no, line)
+					continue
+				self.config[varval[0].strip("\r\n \t")] = varval[1].strip("\r\n \t")
+			fp.close()
+		except:
+			print "got exception:", sys.exc_type, sys.exc_value
+			first = True
+			self.config["connection_localhost"] = "localhost,localhost,root,,"
+
+		self.first_template = None
+		keys = self.config.keys()
+		keys.sort()
+		for name in keys:
+			value = self.config[name]
+			prefix = "connection_"
+			if name.startswith(prefix):
+				v = value.split(",")
+				port = ""
+				p = v[0].rsplit(":", 1)
+				if len(p) == 2:
+					port = p[1]
+					v[0] = p[0]
+				self.add_mysql_host(name[len(prefix):], v[0], port, v[1], v[2], v[3], first)
+			
+			prefix = "template";
+			if name.startswith(prefix):
+				value = value.replace("`$primary_key$`", "$primary_key$")
+				value = value.replace("`$table$`", "$table$")
+				value = value.replace("`$field_conditions$`", "$field_conditions$")
+				self.config[name] = value
+				if not self.first_template:
+					self.first_template = value
+				p = name.split("_", 1)
+				button = gtk.ToolButton(gtk.STOCK_EXECUTE)
+				button.set_tooltip(self.tooltips, "%s\n%s" % (p[1], value))
+				button.connect("clicked", self.on_template, value)
+				self.xml.get_widget("query_toolbar").insert(button, -1)
+				button.show()
+	
+	def add_mysql_host(self, name, hostname, port, user, password, database, isfirst):
+		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database)
+		iter = self.connections_model.append(None, [host])
+		host.set_update_ui(self.redraw_host, iter)
+	
+	def add_sql_log(self, log):
+		max_len = int(self.config["query_log_max_entry_length"])
+		if len(log) > max_len:
+			log = log[0:max_len] + "\n/* query with length of %d bytes truncated. */" % len(log);
+		
+		# query = db_to_utf8(log);
+		# query = syntax_highlight_markup(query);
+		# query = rxx.replace(query, "[\r\n\t ]+", " ", Regexx::global);
+		if not log: return
+			
+		now = time.time()
+		now = int((now - int(now)) * 100)
+		timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+		if now: timestamp = "%s.%02d" % (timestamp, now)
+		iter = self.sql_log_model.append((timestamp, log))
+		self.sql_log_tv.scroll_to_cell(self.sql_log_model.get_path(iter))
+		self.xml.get_widget("message_notebook").set_current_page(0)
+		
+	def add_msg_log(self, log):
+		if not log: return
+		
+		log.replace(
+			"You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near",
+			"syntax error at "
+		)
+		now = time.time()
+		now = int((now - int(now)) * 100)
+		timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+		if now: timestamp = "%s.%02d" % (timestamp, now)
+		iter = self.msg_model.append((timestamp, log))
+		self.msg_tv.scroll_to_cell(self.msg_model.get_path(iter))
+		self.xml.get_widget("message_notebook").set_current_page(1)
+
+	def get_selected_table(self):
+		path, column = self.connections_tv.get_cursor()
+		depth = len(path)
+		iter = self.connections_model.get_iter(path)
+		if depth == 3:
+			return self.connections_model.get_value(iter, 0)
+		return None
+
 	def load_icons(self):
 		self.icon_prefix = "/usr/share/pixmaps/yamysqlfront/"; # todo
 		self.icons = {}
@@ -1121,197 +1672,6 @@ class Emma:
 			try: self.icons[icon] = gtk.gdk.pixbuf_new_from_file(self.icon_prefix + icon + ".png")
 			except: print "could not load", self.icon_prefix + icon + ".png"
 		self.mainwindow.set_icon(self.icons["yamysqlfront"])
-		
-	def on_quit_activate(self, item):
-		gtk.main_quit()
-		
-	def on_about_activate(self, item):
-		aboutdialog = self.xml.get_widget("aboutdialog")
-		aboutdialog.set_version(version)
-		aboutdialog.run()
-		aboutdialog.hide()
-
-	def on_changelog_activate(self, item):
-		fp = file("changelog")
-		changelog = fp.read()
-		fp.close()
-		w = self.xml.get_widget("changelog_window")
-		tv = self.xml.get_widget("changelog_text")
-		tv.get_buffer().set_text(changelog)
-		w.connect('delete-event', self.on_changelog_delete)
-		w.show()
-		
-	def on_changelog_delete(self, window, event):
-		window.hide()
-		return True
-		
-	def on_kill_process(self, button):
-		path, column = self.processlist_tv.get_cursor()
-		if not path or not self.current_host: return
-		iter = self.processlist_model.get_iter(path)
-		process_id = self.processlist_model.get_value(iter, 0)
-		if not self.current_host.query("kill %s" % process_id):
-			self.show_message("sorry", "there was an error while trying to kill process_id %s!" % process_id)
-	
-	def on_sql_log_activate(self, *args):
-		print args
-		
-	def on_sql_log_button_press(self, tv, event):
-		if not event.button == 3: return False
-		res = tv.get_path_at_pos(int(event.x), int(event.y));
-		if not res: return False
-		self.xml.get_widget("sqllog_popup").popup(None, None, None, event.button, event.time);
-		return True
-		
-	def on_connections_button_release(self, tv, event):
-		if not event.button == 3: return False
-		res = tv.get_path_at_pos(int(event.x), int(event.y));
-		menu = None
-		if not res or len(res[0]) == 1:	
-			self.xml.get_widget("modify_connection").set_sensitive(not not res)
-			self.xml.get_widget("delete_connection").set_sensitive(not not res)
-			connected_host = False
-			if res:
-				iter = self.connections_model.get_iter(res[0])
-				# todo if res[0].size() == 1 and (dynamic_cast<mysql_host_entry*>((connections_entry*)(*iter)[connections_mc->entry]))->is_connected())
-				# todo	connected_host = true;
-				
-			self.xml.get_widget("new_database").set_sensitive(connected_host)
-			self.xml.get_widget("refresh_host").set_sensitive(connected_host)
-			self.xml.get_widget("dump_all_databases").set_sensitive(connected_host)
-			menu = self.xml.get_widget("connection_menu")
-		elif len(res[0]) == 2:
-			menu = self.xml.get_widget("database_popup")
-		elif len(res[0]) == 3:
-			menu = self.xml.get_widget("table_popup")
-		else: print "no popup at path depth %d\n" % res[0].size()
-		if menu:
-			menu.popup(None, None, None, event.button, event.time)
-		return True
-		
-	def on_connections_row_activated(self, tv, path, col):
-		depth = len(path)
-		iter = self.connections_model.get_iter(path)
-		o = self.connections_model.get_value(iter, 0)
-		
-		nb = self.xml.get_widget("main_notebook")
-		if depth == 1: # host
-			self.current_host = host = o
-			if host.connected:
-				current_host = None
-				host.close()
-			else:
-				host.connect()
-				if not host.connected: return
-				host.refresh()
-				self.refresh_processlist()
-				nb.set_current_page(1)
-			self.redraw_host(host, iter)
-			self.connections_tv.expand_row(path, False)
-			
-		elif depth == 2: # database
-			self.current_host = o.host
-			new_tables = o.refresh()
-			self.redraw_db(o, iter, new_tables);
-			self.connections_tv.expand_row(path, False)
-			# self.connections_tv.expand_row(path, False)
-			# todo update_query_db()
-			
-		elif depth == 3: # table
-			self.current_host = host = o.db.host
-			host.select_database(o.db)
-			table = o
-			if not table.fields or (time.time() - table.last_field_read) > self.config["autorefresh_interval_table"]:
-				table.refresh()
-				self.redraw_table(o, iter)
-			if self.first_template:
-				nb.set_current_page(4)
-				self.on_template(None, self.first_template)
-			elif nb.get_current_page() < 3:
-				nb.set_current_page(3)				
-			
-			#self.connections_tv.expand_row(path, False)
-			# todo update_query_db();
-			# todo if(!doubleclick) update_table(e, i)
-		else:
-			print "No Handler for tree-depth", depth
-		return
-		
-	def on_mainwindow_key_release_event(self, window, event):
-		#print "state: %d, keyval: 0x%04x, text: '%s'" % (event.state, event.keyval, event.string)
-		
-		#~ RefPtr<Gnome::Glade::Xml> xml = queries[current_query].xml;
-		#~ xml_get_decl_widget_from(xml, local_search_button, Gtk::ToolButton);
-			
-		#~ if(event->keyval == GDK_Tab) {
-			#~ return do_auto_completion();
-		#~ } else 
-		if event.keyval == keysyms.F9 or (event.state == 4 and event.keyval == keysyms.Return):
-			self.on_execute_query_clicked(None)
-			return True
-		#~ } else if(event->keyval == GDK_F6) {
-			#~ query_notebook->set_current_page((current_query + 1) % queries.size());
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_t) {
-			#~ new_query_tab();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_w) {
-			#~ close_query_tab();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_s) {
-			#~ on_save_query();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_o) {
-			#~ on_load_query();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_p) {
-			#~ on_pretty_format();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_f && local_search_button->is_sensitive()) {
-			#~ on_local_search(false);
-			#~ return true;
-		elif event.keyval == keysyms.F3 and self.current_query.local_search.get_property("sensitive"):
-			self.on_local_search_button_clicked(None, True)
-			return True
-		#~ } else if(event->state & 4 && event->keyval == GDK_u) {
-			#~ xml_get_decl_widget_from(xml, query_text, Gtk::TextView);
-			
-			#~ TextBuffer::iterator start, end;
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ string text = query_text->get_buffer()->get_text(start, end);
-			#~ text = to_lower(text);
-			#~ query_text->get_buffer()->erase_selection();
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ query_text->get_buffer()->insert(start, text);
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ start = end;
-			#~ end.backward_chars(text.size());
-			#~ query_text->get_buffer()->select_range(start, end);
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_U) {
-			#~ xml_get_decl_widget_from(xml, query_text, Gtk::TextView);
-			
-			#~ TextBuffer::iterator start, end;
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ string text = to_upper(query_text->get_buffer()->get_text(start, end));
-			#~ query_text->get_buffer()->erase_selection();
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ query_text->get_buffer()->insert(start, text);
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ start = end;
-			#~ end.backward_chars(text.size());
-			#~ query_text->get_buffer()->select_range(start, end);
-			
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval >= GDK_0 && event->keyval <= GDK_9) {
-			#~ int page = event->keyval - GDK_0;
-			#~ if(page == 0) page = 10;
-			#~ page--;
-			#~ if(page < query_notebook->get_n_pages())
-				#~ query_notebook->set_current_page(page);
-			#~ // on_parse_query("vos2sql");
-		#~ }
-		#~ return false;
 		
 	def refresh_processlist(self, *args):
 		if not self.current_host: return

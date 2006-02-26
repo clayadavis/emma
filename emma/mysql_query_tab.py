@@ -21,6 +21,7 @@ class mysql_query_tab:
 		self.model = None
 		self.last_source = None
 		self.result_info = None
+		self.append_iter = None
 	def set(self, text):
 		self.last_source = text
 		self.textview.get_buffer().set_text(text)

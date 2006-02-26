@@ -11,6 +11,8 @@ class mysql_table:
 		self.field_order = []
 		self.expanded = False
 		self.last_field_read = 0
+		self.create_table = ""
+		self.describe_headers = []
 		
 	def refresh(self, refresh_props = True):
 		self.db.host.select_database(self.db)
@@ -23,6 +25,9 @@ class mysql_table:
 		
 		self.host.query("describe `%s`" % self.name)
 		result = self.handle.store_result()
+		self.describe_headers = []
+		for h in result.describe():
+			self.describe_headers.append(h[0])
 		self.fields = {}
 		self.field_order = []
 		for row in result.fetch_row(0):
@@ -30,3 +35,16 @@ class mysql_table:
 			self.fields[row[0]] = row
 		self.last_field_read = time.time()
 		return
+
+	def __str__(self):
+		output = ""
+		for h, p in zip(self.db.status_headers, self.props):
+			output += "\t%-25.25s: %s\n" % (h, p)
+		return output
+		
+	def get_create_table(self):
+		if not self.create_table:
+			self.host.query("show create table `%s`" % self.name)
+			result = self.handle.store_result().fetch_row(0)
+			self.create_table = result[0][1]
+		return self.create_table
