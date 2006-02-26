@@ -566,7 +566,7 @@ class Emma:
 			host.select_database(q.db)
 	
 		if not host:
-			show_message(
+			self.show_message(
 				"error executing this query!",
 				"could not execute query, because there is no selected host!"
 			)
@@ -913,13 +913,12 @@ class Emma:
 			self.xml.get_widget("delete_connection").set_sensitive(not not res)
 			connected_host = False
 			if res:
-				iter = self.connections_model.get_iter(res[0])
-				# todo if res[0].size() == 1 and (dynamic_cast<mysql_host_entry*>((connections_entry*)(*iter)[connections_mc->entry]))->is_connected())
-				# todo	connected_host = true;
-				
+				model = self.connections_model
+				iter = model.get_iter(res[0])
+				host = model.get_value(iter, 0)
+				connected_host = host.connected
 			self.xml.get_widget("new_database").set_sensitive(connected_host)
 			self.xml.get_widget("refresh_host").set_sensitive(connected_host)
-			self.xml.get_widget("dump_all_databases").set_sensitive(connected_host)
 			menu = self.xml.get_widget("connection_menu")
 		elif len(res[0]) == 2:
 			menu = self.xml.get_widget("database_popup")
@@ -936,15 +935,18 @@ class Emma:
 		if len(path) == 3 and nb.get_current_page() == 3:
 			self.update_table_view(path)
 	
-	# def on_main_notebook_change_current_page(self, *args):
 	def on_nb_change_page(self, np, pointer, page):
+		if page == 2:
+			self.redraw_tables()
+			return
 		path, column = self.connections_tv.get_cursor()
+		if not path: return
 		if len(path) == 3 and page == 3:
 			self.update_table_view(path)
-		
+	
 	def update_table_view(self, path = None):
 		if not path:
-			path, column = tv.get_cursor()
+			path, column = self.connections_tv.get_cursor()
 			if len(path) != 3: return
 		iter = self.connections_model.get_iter(path)
 		th = self.connections_model.get_value(iter, 0)
@@ -983,10 +985,10 @@ class Emma:
 				if p is None: p = ""
 				e.set_text(p)
 				r += 1
-
+				
 		tv = self.xml.get_widget("table_textview")
 		tv.get_buffer().set_text(th.get_create_table())
-	
+
 		t = self.table_description
 		for c in t.get_children():
 			self.table_description.remove(c)
@@ -1009,6 +1011,9 @@ class Emma:
 				l.set_selectable(True)
 				l.show()
 			r += 1
+		self.xml.get_widget("vbox14").check_resize()
+		self.tables_count = 0
+		self.redraw_tables()
 		
 	def on_connections_row_activated(self, tv, path, col):
 		depth = len(path)
@@ -1027,14 +1032,13 @@ class Emma:
 				host.refresh()
 				self.refresh_processlist()
 				nb.set_current_page(1)
-			self.redraw_host(host, iter)
-			self.connections_tv.expand_row(path, False)
+			self.redraw_host(host, iter, True)
 			
 		elif depth == 2: # database
 			self.current_host = o.host
 			new_tables = o.refresh()
-			self.redraw_db(o, iter, new_tables);
-			self.connections_tv.expand_row(path, False)
+			self.redraw_db(o, iter, new_tables, True)
+			self.redraw_tables()
 			# self.connections_tv.expand_row(path, False)
 			# todo update_query_db()
 			
@@ -1045,6 +1049,7 @@ class Emma:
 			if not table.fields or (time.time() - table.last_field_read) > self.config["autorefresh_interval_table"]:
 				table.refresh()
 				self.redraw_table(o, iter)
+				
 			if self.first_template:
 				nb.set_current_page(4)
 				self.on_template(None, self.first_template)
@@ -1166,6 +1171,161 @@ class Emma:
 		#menu.popup(None, None, None, event.button, event.time)
 		menu.popup(None, None, None, 0, event.time) # strange!
 		return True
+	
+	def on_table_popup(self, item):
+		path, column = self.connections_tv.get_cursor()
+		iter = self.connections_model.get_iter(path)
+		what = item.name
+		table = self.connections_model.get_value(iter, 0)
+		
+		if what == "refresh_table":
+			table.refresh()
+			self.redraw_table(table, iter)
+			self.update_table_view()
+		elif what == "truncate_table":
+			if not self.confirm("truncate table", "do you really want to truncate the <b>%s</b> table in database <b>%s</b> on <b>%s</b>?" % (table.name, table.db.name, table.db.host.name)):
+				return
+			if table.db.host.query("truncate `%s`" % (table.name)):
+				table.refresh()
+				self.redraw_table(table, iter)
+				self.update_table_view()
+		elif what == "drop_table":
+			if not self.confirm("drop table", "do you really want to DROP the <b>%s</b> table in database <b>%s</b> on <b>%s</b>?" % (table.name, table.db.name, table.db.host.name)):
+				return
+			db = table.db
+			if db.host.query("drop table `%s`" % (table.name)):
+				new_tables = db.refresh()
+				self.redraw_db(db, self.get_db_iter(db), new_tables)
+				self.redraw_tables()
+				
+	def on_db_popup(self, item):
+		path, column = self.connections_tv.get_cursor()
+		iter = self.connections_model.get_iter(path)
+		what = item.name
+		db = self.connections_model.get_value(iter, 0)
+		
+		if what == "refresh_database":
+			new_tables = db.refresh()
+			self.redraw_db(db, iter, new_tables)
+			self.redraw_tables()
+		elif what == "drop_database":
+			if not self.confirm("drop database", "do you really want to drop the <b>%s</b> database on <b>%s</b>?" % (db.name, db.host.name)):
+				return
+			host = db.host
+			if host.query("drop database`%s`" % (db.name)):
+				host.refresh()
+				self.redraw_host(host, self.get_host_iter(host))
+		elif what == "new_table":
+			name = self.input("new table", "please enter the name of the new table:")
+			if not name: return
+			if db.host.query("create table `%s` (`%s_id` int primary key auto_increment)" % (name, name)):
+				new_tables = db.refresh()
+				self.redraw_db(db, self.get_db_iter(db), new_tables)
+				self.redraw_tables()
+	
+	def on_host_popup(self, item):
+		path, column = self.connections_tv.get_cursor()
+		if path:
+			iter = self.connections_model.get_iter(path)
+			host = self.connections_model.get_value(iter, 0)
+		else:
+			iter = None
+			host = None
+		what = item.name
+		
+		if "connection_window" not in self.__dict__:
+			self.connection_window = self.xml.get_widget("connection_window")
+			self.xml.get_widget("cw_apply_button").connect("clicked", self.on_cw_apply)
+			self.xml.get_widget("cw_test_button").connect("clicked", self.on_cw_test)
+			self.xml.get_widget("cw_abort_button").connect("clicked", lambda *a: self.connection_window.hide())
+			self.cw_props = ["name", "host", "port", "user", "password", "database"]
+		
+		if what == "refresh_host":
+			host.refresh()
+			self.redraw_host(host, iter)
+		elif what == "new_database":
+			name = self.input("new database", "please enter the name of the new database:")
+			if not name: return
+			if host.query("create database `%s`" % name):
+				host.refresh()
+				self.redraw_host(host, iter)
+		elif what == "modify_connection":
+			for n in self.cw_props:
+				self.xml.get_widget("cw_%s" % n).set_text(host.__dict__[n])
+			self.cw_mode = "edit"
+			self.cw_host = host
+			self.connection_window.show()
+		elif what == "delete_connection":
+			if not self.confirm("delete host", "do you really want to drop the host <b>%s</b>?" % (host.name)):
+				return
+			host.close()
+			self.connections_model.remove(iter)
+			if self.current_host == host:
+				self.current_host = None
+			del self.config["connection_%s" % host.name]
+			host = None
+			self.save_config()
+		elif what == "new_connection":
+			for n in self.cw_props:
+				self.xml.get_widget("cw_%s" % n).set_text("")
+			self.cw_mode = "new"
+			self.connection_window.show()
+		
+	def on_cw_apply(self, *args):
+		if self.cw_mode == "new":
+			data = []
+			for n in self.cw_props:
+				data.append(self.xml.get_widget("cw_%s" % n).get_text())
+			if not data[0]:
+				self.connection_window.hide()
+				return
+			data.append(False)
+			self.add_mysql_host(*data)
+		else:
+			for n in self.cw_props:
+				self.cw_host.__dict__[n] = self.xml.get_widget("cw_%s" % n).get_text()
+		self.save_config()
+		self.connection_window.hide()
+		
+	def on_cw_test(self, *args):
+		import _mysql;
+		data = []
+		for n in ["host", "user", "password"]:
+			data.append(self.xml.get_widget("cw_%s" % n).get_text())
+			
+		try:
+			handle = _mysql.connect(*data)
+		except:
+			self.show_message("test connection", "could not connect to host <b>%s</b> with user <b>%s</b> and password <b>%s</b>:\n<i>%s</i>" % (data[0], data[1], data[2], sys.exc_value[1]))
+			return
+		self.show_message("test connection", "successfully connected to host <b>%s</b> with user <b>%s</b>!" % (data[0], data[1]))
+		handle.close()
+
+	def get_db_iter(self, db):
+		return self.get_connections_object_at_depth(db, 1)
+		
+	def get_host_iter(self, host):
+		return self.get_connections_object_at_depth(host, 0)
+		
+	def get_connections_object_at_depth(self, obj, depth):
+		d = 0
+		model = self.connections_model
+		iter = model.get_iter_first()
+		while iter:
+			if d == depth and model.get_value(iter, 0) == obj:
+				return iter
+			if d < depth and model.iter_has_child(iter):
+				iter = model.iter_children(iter)
+				d += 1
+				continue
+			new_iter = model.iter_next(iter)
+			if not new_iter:
+				iter = model.iter_parent(iter)
+				d -= 1
+				iter = model.iter_next(iter)
+			else:
+				iter = new_iter
+		return None
 		
 	def on_query_popup(self, item):
 		q = self.current_query
@@ -1369,7 +1529,7 @@ class Emma:
 				if key: 
 					replace = key
 					break
-				replace = self.escape_fieldname(current_table.fields[self.current_table.field_order[0]])
+				replace = self.escape_fieldname(current_table.field_order[0])
 				break
 			t = t.replace("$primary_key$", replace)
 			
@@ -1468,10 +1628,37 @@ class Emma:
 		
 	def show_message(self, title, message):
 		dialog = gtk.MessageDialog(self.mainwindow, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, message)
+		dialog.label.set_property("use-markup", True)
 		dialog.set_title(title)
 		dialog.run()
 		dialog.hide()
 		
+	def confirm(self, title, message):
+		dialog = gtk.MessageDialog(self.mainwindow, gtk.DIALOG_MODAL, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, message)
+		dialog.label.set_property("use-markup", True)
+		dialog.set_title(title)
+		answer = dialog.run()
+		dialog.hide()
+		return answer == gtk.RESPONSE_YES
+		
+	def input(self, title, message):
+		dialog = gtk.Dialog(title, self.mainwindow, gtk.DIALOG_MODAL, 
+			(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT,
+			 gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT))
+		label = gtk.Label(message)
+		label.set_property("use-markup", True)
+		dialog.vbox.pack_start(label, True, True, 2)
+		entry = gtk.Entry()
+		entry.connect("activate", lambda *a: dialog.response(gtk.RESPONSE_ACCEPT))
+		dialog.vbox.pack_start(entry, False, True, 2)
+		label.show()
+		entry.show()
+		answer = dialog.run()
+		dialog.hide()
+		if answer != gtk.RESPONSE_ACCEPT:
+			return None
+		return entry.get_text()
+
 	def render_connections_pixbuf(self, column, cell, model, iter):
 		d = model.iter_depth(iter)
 		o = model.get_value(iter, 0)
@@ -1521,13 +1708,39 @@ class Emma:
 		if value == "t": return True
 		return False
 		
-	def load_config(self):
+	def get_config_file_name(self):
 		for i in ["HOME", "USERPROFILE"]: 
 			filename = os.getenv(i)
 			if filename: break
 		if not filename:
 			filename = "."
-		filename += "/.emma"
+		return filename + "/.emma"
+		
+	def save_config(self):
+		filename = self.get_config_file_name()
+		try:
+			fp = file(filename, "w")
+		except:
+			self.show_message("save config file", "could not open %s for writing: %s" % (filename, sys.exc_value))
+			return
+			
+		keys = self.config.keys()
+		keys.sort()
+		for name in keys:
+			if name.startswith("connection_"):
+				continue
+			value = self.config[name]
+			fp.write("%s=%s\n" % (name, value))
+			
+		iter = self.connections_model.get_iter_root()
+		while iter:
+			host = self.connections_model.get_value(iter, 0)
+			fp.write("connection_%s=%s\n" % (host.name, host.get_connection_string()))
+			iter = self.connections_model.iter_next(iter)
+		fp.close()
+		
+	def load_config(self):
+		filename = self.get_config_file_name()
 		# todo get_charset(self.config["db_codeset"]);
 		# printf("system charset: '%s'\n", self.config["db_codeset"].c_str());
 		# syntax_highlight_functions: grep -E -e "^[ \\t]+<code class=\"literal[^>]*>[^\(<90-9]+\(" mysql_fun.html fun*.html | sed -r -e "s/^[^<]*<code[^>]+>//" -e "s/\(.*$/,/" | tr "[:upper:]" "[:lower:]" | sort | uniq | xargs echo
@@ -1560,10 +1773,6 @@ class Emma:
 			"syntax_highlight_fg_error": "red",
 			"pretty_print_uppercase_keywords": "false",
 			"pretty_print_uppercase_operators": "false",
-			"extern_mysqldump": "mysqldump",
-			"extern_mysqldump_database_dump": "-a -C -e --databases -Q -v -r ",
-			"extern_mysqldump_table_dump": "-a -C -e -Q -v -r ",
-			"extern_mysqldump_host_dump": "-a -C -e -Q -v -A -r ",
 			"template1_last 150 records": "select * from $table$ order by $primary_key$ desc limit 150",
 			"template2_500 records in fs-order": "select * from $table$ limit 500",
 			"template3_quick filter 500": "select * from $table$ where $field_conditions$ limit 500",
@@ -1641,7 +1850,12 @@ class Emma:
 		iter = self.sql_log_model.append((timestamp, log))
 		self.sql_log_tv.scroll_to_cell(self.sql_log_model.get_path(iter))
 		self.xml.get_widget("message_notebook").set_current_page(0)
+		self.process_events()
 		
+	def process_events(self):
+ 		while gtk.events_pending():
+			gtk.main_iteration(False)
+
 	def add_msg_log(self, log):
 		if not log: return
 		
@@ -1705,12 +1919,50 @@ class Emma:
 			
 		return
 	
+	def redraw_tables(self):
+		if not self.current_host:
+			return
+		db = self.current_host.current_db
+		if not db:
+			return
+		if not "tables_tv" in self.__dict__:
+			self.tables_tv = self.xml.get_widget("tables_treeview")
+			self.tables_model = None
+			self.tables_db = None
+			
+		if not self.tables_db == db:
+			self.tables_db = db
+			if self.tables_model: 
+				self.tables_model.clear()
+				for col in self.tables_tv.get_columns():
+					self.tables_tv.remove_column(col)
+
+			fields = db.status_headers
+			columns = [gobject.TYPE_STRING] * len(fields)
+			self.tables_model = gtk.ListStore(*columns);
+			self.tables_tv.set_model(self.tables_model);
+			id = 0
+			for field in fields:
+				title = field.replace("_", "__")
+				self.tables_tv.insert_column_with_data_func(-1, title, gtk.CellRendererText(), self.render_mysql_string, id)
+				id += 1
+			self.tables_count = 0
+		
+		keys = db.tables.keys()
+		if self.tables_count == len(keys): return
+		self.tables_count = len(keys)
+		keys.sort()
+		self.tables_model.clear()
+		for name in keys:
+			table = db.tables[name]
+			self.tables_model.append(table.props)
+	
 	def redraw_entry(self, obj, iter):
 		print "do redraw", obj, iter
 		
-	def redraw_host(self, host, iter):
+	def redraw_host(self, host, iter, expand = False):
 		#print "redraw host", host.name
-		if host.expanded: self.connections_tv.expand_row(self.connections_model.get_path(iter), False)
+		if host.expanded: expand = True
 			
 		# first remove exiting children of that node
 		i = self.connections_model.iter_children(iter)
@@ -1718,21 +1970,44 @@ class Emma:
 			self.connections_model.remove(i)
 		
 		# now add every database
-		for name, db in host.databases.iteritems():
+		keys = host.databases.keys()
+		keys.sort()
+		for name in keys:
+			db = host.databases[name]
 			i = self.connections_model.append(iter, (db,))
+			if expand:
+				self.connections_tv.expand_row(self.connections_model.get_path(iter), False)
+				expand = False
 			self.redraw_db(db, i)
 			
-	def redraw_db(self, db, iter, new_tables = None):
+	def redraw_db(self, db, iter, new_tables = None, force_expand = False):
 		#print "redraw db", db.name
-		if db.expanded: self.connections_tv.expand_row(self.connections_model.get_path(iter), False)
+		if not iter:
+			print "Error: invalid db-iterator:", iter
+			return
+		path = self.connections_model.get_path(iter)
+		if db.expanded: 
+			force_expand = True
 		i = self.connections_model.iter_children(iter)
 		while i and self.connections_model.iter_is_valid(i): 
 			self.connections_model.remove(i)
-		for name, table in db.tables.iteritems():
+		keys = db.tables.keys()
+		keys.sort()
+		iterators = {}
+		for name in keys:
+			table = db.tables[name]
 			i = self.connections_model.append(iter, (table,))
-			if name in new_tables:
-				table.refresh(False)
+			if force_expand: 
+				self.connections_tv.expand_row(path, False)
+				force_expand = False
 			self.redraw_table(table, i)
+			iterators[name] = i
+		if not new_tables: return
+		for name in new_tables:
+			table = db.tables[name]
+			table.refresh(False)
+			self.redraw_table(table, iterators[name])
+			self.process_events()
 			
 	def redraw_table(self, table, iter):
 		#print "redraw table", table.name

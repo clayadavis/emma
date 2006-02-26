@@ -1,4 +1,5 @@
 emma (0.2) unstable; urgency=low
+  Sun, 26 Feb 2006 01:45:54 +0100
   * table view
   * query result popup
   * order by click
@@ -7,8 +8,22 @@ emma (0.2) unstable; urgency=low
   * append row
   * delete row
   * edit row
-    
- -- Florian Schmidt <schmidt_florian@gmx.de>  Sun, 26 Feb 2006 01:45:54 +0100
+  Sun, 26 Feb 2006 14:05:56 +0100
+  * fixed database/table order
+  * show tables while loading their descriptions
+  * process events in show_sql_log()
+  * update table view after first nb-page change
+  * db-tables view
+  * refresh/truncate/drop table
+  * refresh db
+  * new table
+  * drop db
+  * new database
+  * refresh host
+  * delete host
+  * new host
+  * modify host
+ -- Florian Schmidt <schmidt_florian@gmx.de>  
 
 emma (0.1) unstable; urgency=low
   * copied yamysqlfront.glade to emma.glade

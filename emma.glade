@@ -244,7 +244,7 @@
 		  <property name="tab_pos">GTK_POS_TOP</property>
 		  <property name="scrollable">False</property>
 		  <property name="enable_popup">False</property>
-		  <signal name="switch_page" handler="on_nb_change_page" last_modification_time="Sun, 26 Feb 2006 00:10:59 GMT"/>
+		  <signal name="switch_page" handler="on_nb_change_page" last_modification_time="Sun, 26 Feb 2006 13:12:50 GMT"/>
 
 		  <child>
 		    <widget class="GtkScrolledWindow" id="scrolledwindow13">
@@ -2968,10 +2968,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">refresh</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_refresh_host_activate" last_modification_time="Sun, 02 Oct 2005 23:34:04 GMT"/>
+      <signal name="activate" handler="on_host_popup" last_modification_time="Sun, 26 Feb 2006 14:43:45 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image93">
+	<widget class="GtkImage" id="image306">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-refresh</property>
 	  <property name="icon_size">1</property>
@@ -2989,10 +2989,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">modify connection</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_modify_connection_activate" last_modification_time="Thu, 15 Sep 2005 11:35:31 GMT"/>
+      <signal name="activate" handler="on_host_popup" last_modification_time="Sun, 26 Feb 2006 14:43:45 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image94">
+	<widget class="GtkImage" id="image307">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-edit</property>
 	  <property name="icon_size">1</property>
@@ -3010,10 +3010,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">delete connection</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_delete_connection_activate" last_modification_time="Thu, 15 Sep 2005 11:35:31 GMT"/>
+      <signal name="activate" handler="on_host_popup" last_modification_time="Sun, 26 Feb 2006 14:43:45 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image95">
+	<widget class="GtkImage" id="image308">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-delete</property>
 	  <property name="icon_size">1</property>
@@ -3031,10 +3031,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">new connection</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_new_connection_activate" last_modification_time="Thu, 15 Sep 2005 11:35:31 GMT"/>
+      <signal name="activate" handler="on_host_popup" last_modification_time="Sun, 26 Feb 2006 14:43:45 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image96">
+	<widget class="GtkImage" id="image309">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-new</property>
 	  <property name="icon_size">1</property>
@@ -3058,10 +3058,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">new database</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_new_database_activate" last_modification_time="Fri, 16 Sep 2005 12:39:44 GMT"/>
+      <signal name="activate" handler="on_host_popup" last_modification_time="Sun, 26 Feb 2006 14:43:45 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image97">
+	<widget class="GtkImage" id="image310">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-new</property>
 	  <property name="icon_size">1</property>
@@ -3070,93 +3070,6 @@ successor of yamysqlfront</property>
 	  <property name="xpad">0</property>
 	  <property name="ypad">0</property>
 	</widget>
-      </child>
-    </widget>
-  </child>
-
-  <child>
-    <widget class="GtkImageMenuItem" id="dump_all_databases">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">dump all databases</property>
-      <property name="use_underline">True</property>
-      <signal name="activate" handler="on_dump_all_databases1_activate" last_modification_time="Fri, 16 Sep 2005 12:39:44 GMT"/>
-
-      <child internal-child="image">
-	<widget class="GtkImage" id="image98">
-	  <property name="visible">True</property>
-	  <property name="stock">gtk-save</property>
-	  <property name="icon_size">1</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	</widget>
-      </child>
-    </widget>
-  </child>
-</widget>
-
-<widget class="GtkFileChooserDialog" id="filechooser">
-  <property name="action">GTK_FILE_CHOOSER_ACTION_SAVE</property>
-  <property name="local_only">True</property>
-  <property name="select_multiple">False</property>
-  <property name="show_hidden">False</property>
-  <property name="type">GTK_WINDOW_TOPLEVEL</property>
-  <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
-  <property name="modal">True</property>
-  <property name="resizable">True</property>
-  <property name="destroy_with_parent">False</property>
-  <property name="decorated">True</property>
-  <property name="skip_taskbar_hint">False</property>
-  <property name="skip_pager_hint">False</property>
-  <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
-  <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
-  <property name="focus_on_map">True</property>
-
-  <child internal-child="vbox">
-    <widget class="GtkVBox" id="dialog-vbox1">
-      <property name="visible">True</property>
-      <property name="homogeneous">False</property>
-      <property name="spacing">24</property>
-
-      <child internal-child="action_area">
-	<widget class="GtkHButtonBox" id="dialog-action_area1">
-	  <property name="visible">True</property>
-	  <property name="layout_style">GTK_BUTTONBOX_END</property>
-
-	  <child>
-	    <widget class="GtkButton" id="button3">
-	      <property name="visible">True</property>
-	      <property name="can_default">True</property>
-	      <property name="can_focus">True</property>
-	      <property name="label">gtk-cancel</property>
-	      <property name="use_stock">True</property>
-	      <property name="relief">GTK_RELIEF_NORMAL</property>
-	      <property name="focus_on_click">True</property>
-	      <property name="response_id">-6</property>
-	    </widget>
-	  </child>
-
-	  <child>
-	    <widget class="GtkButton" id="fc_commit_button">
-	      <property name="visible">True</property>
-	      <property name="can_default">True</property>
-	      <property name="has_default">True</property>
-	      <property name="can_focus">True</property>
-	      <property name="label">gtk-ok</property>
-	      <property name="use_stock">True</property>
-	      <property name="relief">GTK_RELIEF_NORMAL</property>
-	      <property name="focus_on_click">True</property>
-	      <property name="response_id">-5</property>
-	    </widget>
-	  </child>
-	</widget>
-	<packing>
-	  <property name="padding">0</property>
-	  <property name="expand">False</property>
-	  <property name="fill">True</property>
-	  <property name="pack_type">GTK_PACK_END</property>
-	</packing>
       </child>
     </widget>
   </child>
@@ -3597,54 +3510,12 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">refresh</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_refresh_database_activate" last_modification_time="Sun, 02 Oct 2005 23:24:43 GMT"/>
+      <signal name="activate" handler="on_db_popup" last_modification_time="Sun, 26 Feb 2006 14:22:23 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image169">
+	<widget class="GtkImage" id="image299">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-refresh</property>
-	  <property name="icon_size">1</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	</widget>
-      </child>
-    </widget>
-  </child>
-
-  <child>
-    <widget class="GtkImageMenuItem" id="read_all_tables">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">read all tables</property>
-      <property name="use_underline">True</property>
-      <signal name="activate" handler="on_read_all_tables_activate" last_modification_time="Sat, 10 Dec 2005 15:13:23 GMT"/>
-
-      <child internal-child="image">
-	<widget class="GtkImage" id="image170">
-	  <property name="visible">True</property>
-	  <property name="stock">gtk-refresh</property>
-	  <property name="icon_size">1</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	</widget>
-      </child>
-    </widget>
-  </child>
-
-  <child>
-    <widget class="GtkImageMenuItem" id="dump_database">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">dump database</property>
-      <property name="use_underline">True</property>
-      <signal name="activate" handler="on_dump_database_activate" last_modification_time="Fri, 16 Sep 2005 12:29:46 GMT"/>
-
-      <child internal-child="image">
-	<widget class="GtkImage" id="image171">
-	  <property name="visible">True</property>
-	  <property name="stock">gtk-save</property>
 	  <property name="icon_size">1</property>
 	  <property name="xalign">0.5</property>
 	  <property name="yalign">0.5</property>
@@ -3660,10 +3531,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">drop database</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_drop_database_activate" last_modification_time="Fri, 16 Sep 2005 12:29:46 GMT"/>
+      <signal name="activate" handler="on_db_popup" last_modification_time="Sun, 26 Feb 2006 14:22:23 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image172">
+	<widget class="GtkImage" id="image300">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-delete</property>
 	  <property name="icon_size">1</property>
@@ -3687,10 +3558,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">new table</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_new_table_activate" last_modification_time="Fri, 16 Sep 2005 12:40:21 GMT"/>
+      <signal name="activate" handler="on_db_popup" last_modification_time="Sun, 26 Feb 2006 14:22:23 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image173">
+	<widget class="GtkImage" id="image301">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-new</property>
 	  <property name="icon_size">1</property>
@@ -3704,127 +3575,6 @@ successor of yamysqlfront</property>
   </child>
 </widget>
 
-<widget class="GtkDialog" id="input_dialog">
-  <property name="title" translatable="yes">input dialog</property>
-  <property name="type">GTK_WINDOW_TOPLEVEL</property>
-  <property name="window_position">GTK_WIN_POS_NONE</property>
-  <property name="modal">True</property>
-  <property name="resizable">True</property>
-  <property name="destroy_with_parent">False</property>
-  <property name="decorated">True</property>
-  <property name="skip_taskbar_hint">False</property>
-  <property name="skip_pager_hint">False</property>
-  <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
-  <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
-  <property name="focus_on_map">True</property>
-  <property name="has_separator">True</property>
-
-  <child internal-child="vbox">
-    <widget class="GtkVBox" id="dialog-vbox4">
-      <property name="visible">True</property>
-      <property name="homogeneous">False</property>
-      <property name="spacing">0</property>
-
-      <child internal-child="action_area">
-	<widget class="GtkHButtonBox" id="dialog-action_area4">
-	  <property name="visible">True</property>
-	  <property name="layout_style">GTK_BUTTONBOX_END</property>
-
-	  <child>
-	    <widget class="GtkButton" id="okbutton3">
-	      <property name="visible">True</property>
-	      <property name="can_default">True</property>
-	      <property name="can_focus">True</property>
-	      <property name="label">gtk-ok</property>
-	      <property name="use_stock">True</property>
-	      <property name="relief">GTK_RELIEF_NORMAL</property>
-	      <property name="focus_on_click">True</property>
-	      <property name="response_id">-5</property>
-	    </widget>
-	  </child>
-
-	  <child>
-	    <widget class="GtkButton" id="cancelbutton3">
-	      <property name="visible">True</property>
-	      <property name="can_default">True</property>
-	      <property name="can_focus">True</property>
-	      <property name="label">gtk-cancel</property>
-	      <property name="use_stock">True</property>
-	      <property name="relief">GTK_RELIEF_NORMAL</property>
-	      <property name="focus_on_click">True</property>
-	      <property name="response_id">0</property>
-	    </widget>
-	  </child>
-	</widget>
-	<packing>
-	  <property name="padding">0</property>
-	  <property name="expand">False</property>
-	  <property name="fill">True</property>
-	  <property name="pack_type">GTK_PACK_END</property>
-	</packing>
-      </child>
-
-      <child>
-	<widget class="GtkVBox" id="vbox10">
-	  <property name="border_width">5</property>
-	  <property name="visible">True</property>
-	  <property name="homogeneous">True</property>
-	  <property name="spacing">2</property>
-
-	  <child>
-	    <widget class="GtkLabel" id="input_label">
-	      <property name="visible">True</property>
-	      <property name="label" translatable="yes">please input:</property>
-	      <property name="use_underline">False</property>
-	      <property name="use_markup">False</property>
-	      <property name="justify">GTK_JUSTIFY_LEFT</property>
-	      <property name="wrap">False</property>
-	      <property name="selectable">False</property>
-	      <property name="xalign">0.5</property>
-	      <property name="yalign">0.5</property>
-	      <property name="xpad">0</property>
-	      <property name="ypad">0</property>
-	      <property name="ellipsize">PANGO_ELLIPSIZE_NONE</property>
-	      <property name="width_chars">-1</property>
-	      <property name="single_line_mode">False</property>
-	      <property name="angle">0</property>
-	    </widget>
-	    <packing>
-	      <property name="padding">0</property>
-	      <property name="expand">True</property>
-	      <property name="fill">True</property>
-	    </packing>
-	  </child>
-
-	  <child>
-	    <widget class="GtkEntry" id="input_entry">
-	      <property name="visible">True</property>
-	      <property name="can_focus">True</property>
-	      <property name="editable">True</property>
-	      <property name="visibility">True</property>
-	      <property name="max_length">0</property>
-	      <property name="text" translatable="yes"></property>
-	      <property name="has_frame">True</property>
-	      <property name="invisible_char">*</property>
-	      <property name="activates_default">False</property>
-	    </widget>
-	    <packing>
-	      <property name="padding">0</property>
-	      <property name="expand">False</property>
-	      <property name="fill">False</property>
-	    </packing>
-	  </child>
-	</widget>
-	<packing>
-	  <property name="padding">0</property>
-	  <property name="expand">True</property>
-	  <property name="fill">True</property>
-	</packing>
-      </child>
-    </widget>
-  </child>
-</widget>
-
 <widget class="GtkMenu" id="table_popup">
 
   <child>
@@ -3832,75 +3582,12 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">refresh</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_refresh_table_activate" last_modification_time="Sun, 02 Oct 2005 23:24:21 GMT"/>
+      <signal name="activate" handler="on_table_popup" last_modification_time="Sun, 26 Feb 2006 13:41:47 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image153">
+	<widget class="GtkImage" id="image294">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-refresh</property>
-	  <property name="icon_size">1</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	</widget>
-      </child>
-    </widget>
-  </child>
-
-  <child>
-    <widget class="GtkImageMenuItem" id="edit_tablebutton">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">edit table</property>
-      <property name="use_underline">True</property>
-      <signal name="activate" handler="on_edit_table_activate" last_modification_time="Fri, 16 Sep 2005 15:58:20 GMT"/>
-
-      <child internal-child="image">
-	<widget class="GtkImage" id="image154">
-	  <property name="visible">True</property>
-	  <property name="stock">gtk-edit</property>
-	  <property name="icon_size">1</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	</widget>
-      </child>
-    </widget>
-  </child>
-
-  <child>
-    <widget class="GtkImageMenuItem" id="edit_index">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">edit keys</property>
-      <property name="use_underline">True</property>
-      <signal name="activate" handler="on_edit_keys_activate" last_modification_time="Sat, 08 Oct 2005 18:14:14 GMT"/>
-
-      <child internal-child="image">
-	<widget class="GtkImage" id="image155">
-	  <property name="visible">True</property>
-	  <property name="stock">gtk-edit</property>
-	  <property name="icon_size">1</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	</widget>
-      </child>
-    </widget>
-  </child>
-
-  <child>
-    <widget class="GtkImageMenuItem" id="dump_table">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">dump table</property>
-      <property name="use_underline">True</property>
-      <signal name="activate" handler="on_dump_table_activate" last_modification_time="Fri, 16 Sep 2005 15:58:20 GMT"/>
-
-      <child internal-child="image">
-	<widget class="GtkImage" id="image156">
-	  <property name="visible">True</property>
-	  <property name="stock">gtk-save</property>
 	  <property name="icon_size">1</property>
 	  <property name="xalign">0.5</property>
 	  <property name="yalign">0.5</property>
@@ -3916,10 +3603,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">truncate table</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_truncate_table_activate" last_modification_time="Sun, 13 Nov 2005 13:44:03 GMT"/>
+      <signal name="activate" handler="on_table_popup" last_modification_time="Sun, 26 Feb 2006 13:41:47 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image157">
+	<widget class="GtkImage" id="image295">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-cut</property>
 	  <property name="icon_size">1</property>
@@ -3937,10 +3624,10 @@ successor of yamysqlfront</property>
       <property name="visible">True</property>
       <property name="label" translatable="yes">drop table</property>
       <property name="use_underline">True</property>
-      <signal name="activate" handler="on_drop_table_activate" last_modification_time="Fri, 16 Sep 2005 15:58:20 GMT"/>
+      <signal name="activate" handler="on_table_popup" last_modification_time="Sun, 26 Feb 2006 13:41:47 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image158">
+	<widget class="GtkImage" id="image296">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-delete</property>
 	  <property name="icon_size">1</property>
@@ -3949,96 +3636,6 @@ successor of yamysqlfront</property>
 	  <property name="xpad">0</property>
 	  <property name="ypad">0</property>
 	</widget>
-      </child>
-    </widget>
-  </child>
-</widget>
-
-<widget class="GtkWindow" id="mysqldump_window">
-  <property name="width_request">631</property>
-  <property name="height_request">177</property>
-  <property name="title" translatable="yes">mysqldump</property>
-  <property name="type">GTK_WINDOW_TOPLEVEL</property>
-  <property name="window_position">GTK_WIN_POS_CENTER_ALWAYS</property>
-  <property name="modal">True</property>
-  <property name="resizable">False</property>
-  <property name="destroy_with_parent">False</property>
-  <property name="icon_name">gtk-network</property>
-  <property name="decorated">True</property>
-  <property name="skip_taskbar_hint">True</property>
-  <property name="skip_pager_hint">True</property>
-  <property name="type_hint">GDK_WINDOW_TYPE_HINT_SPLASHSCREEN</property>
-  <property name="gravity">GDK_GRAVITY_CENTER</property>
-  <property name="focus_on_map">True</property>
-
-  <child>
-    <widget class="GtkVBox" id="vbox12">
-      <property name="border_width">10</property>
-      <property name="visible">True</property>
-      <property name="homogeneous">False</property>
-      <property name="spacing">10</property>
-
-      <child>
-	<widget class="GtkLabel" id="label41">
-	  <property name="visible">True</property>
-	  <property name="label" translatable="yes">mysqldump is running.
-please wait...</property>
-	  <property name="use_underline">False</property>
-	  <property name="use_markup">False</property>
-	  <property name="justify">GTK_JUSTIFY_CENTER</property>
-	  <property name="wrap">False</property>
-	  <property name="selectable">False</property>
-	  <property name="xalign">0.5</property>
-	  <property name="yalign">0.5</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	  <property name="ellipsize">PANGO_ELLIPSIZE_NONE</property>
-	  <property name="width_chars">-1</property>
-	  <property name="single_line_mode">False</property>
-	  <property name="angle">0</property>
-	</widget>
-	<packing>
-	  <property name="padding">0</property>
-	  <property name="expand">False</property>
-	  <property name="fill">False</property>
-	</packing>
-      </child>
-
-      <child>
-	<widget class="GtkHSeparator" id="hseparator1">
-	  <property name="visible">True</property>
-	</widget>
-	<packing>
-	  <property name="padding">0</property>
-	  <property name="expand">False</property>
-	  <property name="fill">True</property>
-	</packing>
-      </child>
-
-      <child>
-	<widget class="GtkLabel" id="mysqldump_state">
-	  <property name="visible">True</property>
-	  <property name="can_focus">True</property>
-	  <property name="label" translatable="yes">sdf</property>
-	  <property name="use_underline">False</property>
-	  <property name="use_markup">False</property>
-	  <property name="justify">GTK_JUSTIFY_LEFT</property>
-	  <property name="wrap">False</property>
-	  <property name="selectable">True</property>
-	  <property name="xalign">0</property>
-	  <property name="yalign">0</property>
-	  <property name="xpad">0</property>
-	  <property name="ypad">0</property>
-	  <property name="ellipsize">PANGO_ELLIPSIZE_NONE</property>
-	  <property name="width_chars">-1</property>
-	  <property name="single_line_mode">False</property>
-	  <property name="angle">0</property>
-	</widget>
-	<packing>
-	  <property name="padding">0</property>
-	  <property name="expand">True</property>
-	  <property name="fill">True</property>
-	</packing>
       </child>
     </widget>
   </child>
@@ -5074,43 +4671,6 @@ please wait...</property>
 	  <property name="ypad">0</property>
 	</widget>
       </child>
-    </widget>
-  </child>
-</widget>
-
-<widget class="GtkWindow" id="test_tooltip">
-  <property name="border_width">2</property>
-  <property name="width_request">136</property>
-  <property name="title" translatable="yes">window1</property>
-  <property name="type">GTK_WINDOW_TOPLEVEL</property>
-  <property name="window_position">GTK_WIN_POS_NONE</property>
-  <property name="modal">False</property>
-  <property name="resizable">False</property>
-  <property name="destroy_with_parent">False</property>
-  <property name="decorated">False</property>
-  <property name="skip_taskbar_hint">True</property>
-  <property name="skip_pager_hint">True</property>
-  <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
-  <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
-  <property name="focus_on_map">True</property>
-
-  <child>
-    <widget class="GtkLabel" id="label48">
-      <property name="visible">True</property>
-      <property name="label" translatable="yes">dies ist flo's tooltip</property>
-      <property name="use_underline">False</property>
-      <property name="use_markup">False</property>
-      <property name="justify">GTK_JUSTIFY_LEFT</property>
-      <property name="wrap">False</property>
-      <property name="selectable">False</property>
-      <property name="xalign">0.5</property>
-      <property name="yalign">0.5</property>
-      <property name="xpad">0</property>
-      <property name="ypad">0</property>
-      <property name="ellipsize">PANGO_ELLIPSIZE_NONE</property>
-      <property name="width_chars">-1</property>
-      <property name="single_line_mode">False</property>
-      <property name="angle">0</property>
     </widget>
   </child>
 </widget>

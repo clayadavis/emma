@@ -20,8 +20,9 @@ class mysql_table:
 		if refresh_props:
 			self.host.query("show table status like '%s'" % self.name)
 			result = self.handle.store_result()
-			self.props = result.fetch_row(0)
-			self.name = self.props[0][0]
+			rows = result.fetch_row(0)
+			self.props = rows[0]
+			self.name = self.props[0]
 		
 		self.host.query("describe `%s`" % self.name)
 		result = self.handle.store_result()

@@ -15,14 +15,29 @@ class mysql_host:
 		self.processlist = None
 		self.update_ui = None
 		self.expanded = False
+	def get_connection_string(self):
+		if self.port != "":
+			output = "%s:%s" % (self.host, self.port)
+		else:
+			output = "%s" % self.host
+		output += ",%s,%s,%s" % (self.user, self.password, self.database)
+		return output
 		
 	def set_update_ui(self, update_ui, *args):
 		self.update_ui = update_ui
 		self.update_ui_args = args
 	
 	def connect(self):
+		if self.port == "":
+			port = 3306
+		else:
+			port = int(self.port)
+		if self.database == "":
+			db = "test"
+		else:
+			db = self.database
 		try:
-			self.handle = _mysql.connect(self.host, self.user, self.password, connect_timeout=7)
+			self.handle = _mysql.connect(self.host, self.user, self.password, db=db, port=port, connect_timeout=7)
 		except _mysql_exceptions.OperationalError:
 			self.connected = False
 			self.msg_log("%s: %s" % (sys.exc_type, sys.exc_value[1]))
@@ -33,6 +48,7 @@ class mysql_host:
 	def close(self):
 		self.databases = {}
 		self.processlist = None
+		self.handle.close()
 		self.handle = None
 		self.current_db = None
 		self.connected = False
@@ -82,14 +98,14 @@ class mysql_host:
 	def refresh(self):
 		self.query("show databases")
 		result = self.handle.store_result()
-		old = set(self.databases.keys())
+		old = dict(self.databases)
 		db_id = len(old)
 		for row in result.fetch_row(0):
 			if not row[0] in old:
 				self.databases[row[0]] = mysql_db(self, row[0])
 			else:
 				del old[row[0]]
-		for db in old:
+		for db in old.keys():
 			print "remove database", db
 			del self.databases[db]
 		
