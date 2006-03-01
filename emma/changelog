@@ -23,6 +23,13 @@ emma (0.2) unstable; urgency=low
   * delete host
   * new host
   * modify host
+  Wed, 01 Mar 2006 19:48:49 +0100
+  * load query
+  * save query
+  * mysql_ping to connected hosts
+  * save workspace
+  * load workspace
+  * first easy pickly/unpickle
  -- Florian Schmidt <schmidt_florian@gmx.de>  
 
 emma (0.1) unstable; urgency=low

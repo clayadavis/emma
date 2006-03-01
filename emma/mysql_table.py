@@ -14,6 +14,13 @@ class mysql_table:
 		self.create_table = ""
 		self.describe_headers = []
 		
+	def __getstate__(self):
+		d = dict(self.__dict__)
+		for i in ["handle"]:
+			del d[i]
+		#print "table will pickle:", d
+		return d
+		
 	def refresh(self, refresh_props = True):
 		self.db.host.select_database(self.db)
 		
@@ -45,7 +52,13 @@ class mysql_table:
 		
 	def get_create_table(self):
 		if not self.create_table:
+			self.db.host.select_database(self.db)
 			self.host.query("show create table `%s`" % self.name)
-			result = self.handle.store_result().fetch_row(0)
+			print "create with:", self.handle
+			result = self.handle.store_result()
+			if not result:
+				print "can't get create table for %s at %s and %s" % (self.name, self, self.handle)
+				return ""
+			result = result.fetch_row(0)
 			self.create_table = result[0][1]
 		return self.create_table

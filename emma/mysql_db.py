@@ -3,14 +3,26 @@ import traceback
 from mysql_table import *
 
 class mysql_db:
-	def __init__(self, host, name):
+	def __init__(self, host, name = None):
 		self.handle = host.handle
 		self.host = host
-		self.name = name
-		self.id = id
-		self.expanded = False
-		self.status_headers = []
-		self.tables = {}
+		if name != None:
+			self.name = name
+			self.expanded = False
+			self.status_headers = []
+			self.tables = {}
+		else:
+			print "unpickling tables!", self.handle
+			for name, table in self.tables.iteritems():
+				table.handle = self.handle
+		#self.id = id
+		
+	def __getstate__(self):
+		d = dict(self.__dict__)
+		for i in ["handle"]:
+			del d[i]
+		#print "db will pickle:", d
+		return d
 		
 	def refresh(self):
 		self.host.select_database(self)

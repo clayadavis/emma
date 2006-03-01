@@ -7,14 +7,40 @@ from mysql_db import *
 
 class mysql_host:
 	def __init__(self, *args):
-		self.sql_log, self.msg_log, self.name, self.host, self.port, self.user, self.password, self.database = args
-		self.connected = False
-		self.databases = {} # name -> db_object
-		self.current_db = None
-		self.handle = None
+		if len(args) == 2:
+			# unpickle
+			self.sql_log, self.msg_log = args
+			print "unpickle host!"
+			if self.connected:
+				db_name = self.current_db.name
+				self.current_db = None
+				print "try to reconnect after unpickling!"
+				self.connect()
+				print "resulting handle:", self.handle
+			if self.connected:
+				print "unpickling databases!", self.handle
+				for name, db in self.databases.iteritems():
+					db.__init__(self)
+				self._use_db(db_name, True)
+		else:
+			self.sql_log, self.msg_log, self.name, self.host, self.port, self.user, self.password, self.database = args
+			self.connected = False
+			self.databases = {} # name -> db_object
+			self.current_db = None
+			self.expanded = False
+			self.handle = None
+			
 		self.processlist = None
 		self.update_ui = None
-		self.expanded = False
+		self.last_error = ""
+		
+	def __getstate__(self):
+		d = dict(self.__dict__)
+		for i in ["sql_log", "msg_log", "handle", "processlist", "update_ui", "update_ui_args"]:
+			del d[i]
+		#print "host will pickle:", d
+		return d
+		
 	def get_connection_string(self):
 		if self.port != "":
 			output = "%s:%s" % (self.host, self.port)
@@ -45,18 +71,28 @@ class mysql_host:
 		self.connected = True
 		if self.database: self._use_db(self.database)
 		
+	def ping(self):
+		try:
+			self.handle.ping()
+			return True
+		except:
+			self.connected = False
+			self.msg_log(sys.exc_value[1])
+			return False
+		
 	def close(self):
 		self.databases = {}
 		self.processlist = None
-		self.handle.close()
-		self.handle = None
+		if self.handle:
+			self.handle.close()
+			self.handle = None
 		self.current_db = None
 		self.connected = False
 		if self.update_ui: self.update_ui(self, *self.update_ui_args)
 		
 	def query(self, query, check_use=True):
 		if not self.handle:
-			self.msg_log("not connected! can't execute %s" % query)
+			self.msg_log("not connected! can't execute %s, %s, %s" % (query, str(self.handle), str(self)))
 			return
 			
 		self.sql_log(query)

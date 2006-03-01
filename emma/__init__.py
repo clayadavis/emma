@@ -10,13 +10,17 @@ import re
 import gc
 from mysql_host import *
 from mysql_query_tab import *
+import pickle
 version = "1.0"
+
+new_instance = None
 
 re_src_after_order = "(?:[ \r\n\t](?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$))"
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order + ")"
 
 class Emma:
 	def __init__(self):
+		self.created_once = {}
 		filename = "emma.glade"
 		directories = ["./", "../", "/share/glade/"]
 		for i in directories:
@@ -91,15 +95,88 @@ class Emma:
 		self.table_description_size = (0, 0)
 		self.table_description = self.xml.get_widget("table_description")
 		
+		self.query_notebook = self.xml.get_widget("query_notebook")
+		
 		self.tooltips = gtk.Tooltips()
-		self.hosts = {}
 		self.sort_timer_running = False
 		self.field_conditions_initialized = False
 		self.current_host = None
 		self.current_processlist_host = None
 		self.processlist_timer_running = False
-		self.load_config()
-		self.current_query = mysql_query_tab(self.xml)
+		
+		if not hasattr(self, "state"):
+			self.hosts = {}
+			self.load_config()
+			self.queries = []
+			self.add_query_tab(mysql_query_tab(self.xml, self.query_notebook))
+		else:
+			self.hosts = self.state["hosts"]
+			self.load_config(True)
+			self.queries = []
+			first = True
+			for q in self.state["queries"]:
+				if first:
+					xml = self.xml
+				else:
+					xml = gtk.glade.XML(self.glade_file, "first_query")
+					
+				new_page = xml.get_widget("first_query")
+				q.__init__(xml, self.query_notebook)
+				self.add_query_tab(q)
+				
+				if first:
+					first = False
+					self.query_notebook.set_tab_label_text(new_page, q.name)
+				else:
+					label = gtk.Label(q.name)
+					label.show()
+					self.query_notebook.append_page(new_page, label)
+		
+		if int(self.config["ping_connection_interval"]) > 0:
+			gobject.timeout_add(
+				int(self.config["ping_connection_interval"]) * 1000,
+				self.on_connection_ping
+			)
+		
+	def __getstate__(self):
+		hosts = []
+		iter = self.connections_model.get_iter_root()
+		while iter:
+			host = self.connections_model.get_value(iter, 0)
+			hosts.append(host)
+			iter = self.connections_model.iter_next(iter)
+		
+		return {"hosts": hosts, "queries": self.queries}
+		
+	def add_query_tab(self, qt):
+		self.current_query = qt
+		self.queries.append(qt)
+		qt.set_query_font(self.config["query_text_font"])
+		qt.set_result_font(self.config["query_result_font"])
+		if self.config_get_bool("query_text_wrap"):
+			qt.set_wrap_mode(gtk.WRAP_WORD)
+		else:
+			qt.set_wrap_mode(gtk.WRAP_NONE)
+
+	def del_query_tab(self, qt):
+		if self.current_query == qt:
+			self.current_query = None
+			
+		i = self.queries.index(qt)
+		del self.queries[i]
+
+	def on_connection_ping(self):
+		iter = self.connections_model.get_iter_root()
+		while iter:
+			host = self.connections_model.get_value(iter, 0)
+			if host.connected:
+				print "pinging %s" % host.name,
+				if not host.ping():
+					print "...error! reconnect seems to fail!"
+				else:
+					print "ok"
+			iter = self.connections_model.iter_next(iter)
+		return True
 		
 	def search_query_end(self, text, start):
 		try:	r = self.query_end_re
@@ -751,7 +828,7 @@ class Emma:
 				if (now - last_display) < 0.2: continue
 					
 				q.label.set_text("displayed %d rows..." % cnt)
-				q.label.get_window().process_updates(False)
+				q.label.window.process_updates(False)
 				last_display = now
 			
 			display_time = time.time() - start_display
@@ -776,11 +853,124 @@ class Emma:
 		# todo update_buttons();	
 		gc.collect()
 		
+	def assign_once(self, name, creator, *args):
+		try:
+			return self.created_once[name]
+		except:
+			obj = creator(*args)
+			self.created_once[name] = obj
+			return obj
+		
 	def on_save_query_clicked(self, button):
-		print __name__
+		if not self.current_query:
+			return
+		
+		d = self.assign_once("save dialog", 
+			gtk.FileChooserDialog, "save query", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if os.path.exists(filename):
+			if not os.path.isfile(filename):
+				self.show_message("save query", "%s already exists and is not a file!" % filename)
+				return
+			if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
+				return
+		b = self.current_query.textview.get_buffer()
+		query_text = b.get_text(b.get_start_iter(), b.get_end_iter())
+		try:
+			fp = file(filename, "wb")
+			fp.write(query_text)
+			fp.close()
+		except:
+			self.show_message("save query", "error writing query to file %s: %s" % (filename, sys.exc_value))
 		
 	def on_load_query_clicked(self, button):
-		print __name__
+		if not self.current_query:
+			return
+		
+		d = self.assign_once("load dialog", 
+			gtk.FileChooserDialog, "load query", self.mainwindow, gtk.FILE_CHOOSER_ACTION_OPEN, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if not os.path.exists(filename):
+			self.show_message("load query", "%s does not exists!" % filename)
+			return
+		if not os.path.isfile(filename):
+			self.show_message("load query", "%s exists, but is not a file!" % filename)
+			return
+			
+		try:
+			fp = file(filename, "rb")
+			query_text = fp.read()
+			fp.close()
+		except:
+			self.show_message("save query", "error writing query to file %s: %s" % (filename, sys.exc_value))
+			return
+		self.current_query.textview.get_buffer().set_text(query_text)
+		
+	def on_save_workspace_activate(self, button):
+		d = self.assign_once("save workspace dialog", 
+			gtk.FileChooserDialog, "save workspace", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if os.path.exists(filename):
+			if not os.path.isfile(filename):
+				self.show_message("save workspace", "%s already exists and is not a file!" % filename)
+				return
+			if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
+				return
+		try:
+			fp = file(filename, "wb")
+			pickle.dump(self, fp)
+			fp.close()
+		except:
+			self.show_message("save workspace", "error writing workspace to file %s: %s/%s" % (filename, sys.exc_type, sys.exc_value))
+		
+	def on_restore_workspace_activate(self, button):
+		global new_instance
+		d = self.assign_once("restore workspace dialog", 
+			gtk.FileChooserDialog, "restore workspace", self.mainwindow, gtk.FILE_CHOOSER_ACTION_OPEN, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if not os.path.exists(filename):
+			self.show_message("restore workspace", "%s does not exists!" % filename)
+			return
+		if not os.path.isfile(filename):
+			self.show_message("restore workspace", "%s exists, but is not a file!" % filename)
+			return
+			
+		try:
+			fp = file(filename, "rb")
+			print "i am unpickling:", self
+			new_instance = pickle.load(fp)
+			print "got new instance:", new_instance
+			fp.close()
+		except:
+			self.show_message("restore workspace", "error restoring workspace from file %s: %s/%s" % (filename, sys.exc_type, sys.exc_value))
+		self.mainwindow.destroy()
+
+	def __setstate__(self, state):
+		self.state = state
 		
 	def on_local_search_button_clicked(self, button, again = False):
 		if not self.current_query.local_search.get_property("sensitive"):
@@ -834,16 +1024,51 @@ class Emma:
 		print __name__
 		
 	def on_query_font_clicked(self, button):
-		print __name__
+		d = self.assign_once("query text font", gtk.FontSelectionDialog, "select query font")
+		d.set_font_name(self.config["query_text_font"])
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_OK: return
+		font_name = d.get_font_name()
+		self.current_query.set_query_font(font_name)
+		self.config["query_text_font"] = font_name
+		self.save_config()
+
+	def on_query_result_font_clicked(self, button):
+		d = self.assign_once("query result font", gtk.FontSelectionDialog, "select result font")
+		d.set_font_name(self.config["query_result_font"])
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_OK: return
+		font_name = d.get_font_name()
+		self.current_query.set_result_font(font_name)
+		self.config["query_result_font"] = font_name
+		self.save_config()
 		
 	def on_newquery_button_clicked(self, button):
-		print __name__
+		xml = gtk.glade.XML(self.glade_file, "first_query")
+		new_page = xml.get_widget("first_query")
+		self.add_query_tab(mysql_query_tab(xml, self.query_notebook))
+		label = gtk.Label("query%d" % len(self.queries))
+		label.show()
+		self.query_notebook.append_page(new_page, label)
+		self.query_notebook.set_current_page(len(self.queries) - 1)
+		self.current_query.textview.grab_focus()
 		
+	def on_query_notebook_switch_page(self, nb, pointer, page):
+		self.current_query = self.queries[page]
+	
 	def on_closequery_button_clicked(self, button):
-		print __name__
+		if len(self.queries) == 1: return
+		self.current_query.destroy()
+		self.del_query_tab(self.current_query)
+		self.query_notebook.remove_page(self.query_notebook.get_current_page())
+		gc.collect()
 		
 	def on_rename_query_tab_clicked(self, button):
-		print __name__
+		new_name = self.input("rename tab", "please enter the new name of this tab:",
+			self.query_notebook.get_tab_label_text(self.current_query.page))
+		self.query_notebook.set_tab_label_text(self.current_query.page, new_name)
 		
 	def on_processlist_refresh_value_change(self, button):
 		value = button.get_value()
@@ -864,6 +1089,7 @@ class Emma:
 			if i: self.fc_logic_combobox[i - 1].set_active(0)
 	
 	def on_quit_activate(self, item):
+		print self, "quit"
 		gtk.main_quit()
 		
 	def on_about_activate(self, item):
@@ -1072,9 +1298,9 @@ class Emma:
 		#~ if(event->keyval == GDK_Tab) {
 			#~ return do_auto_completion();
 		#~ } else 
-		if event.keyval == keysyms.F9 or (event.state == 4 and event.keyval == keysyms.Return):
-			self.on_execute_query_clicked(None)
-			return True
+		#if event.keyval == keysyms.F9 or (event.state == 4 and event.keyval == keysyms.Return):
+		#	self.on_execute_query_clicked(None)
+		#	return True
 		#~ } else if(event->keyval == GDK_F6) {
 			#~ query_notebook->set_current_page((current_query + 1) % queries.size());
 			#~ return true;
@@ -1093,7 +1319,7 @@ class Emma:
 		#~ } else if(event->state & 4 && event->keyval == GDK_p) {
 			#~ on_pretty_format();
 			#~ return true;
-		elif event.keyval == keysyms.F3:
+		if event.keyval == keysyms.F3:
 			self.on_local_search_button_clicked(None, True)
 			return True
 		#~ } else if(event->state & 4 && event->keyval == GDK_u) {
@@ -1641,7 +1867,7 @@ class Emma:
 		dialog.hide()
 		return answer == gtk.RESPONSE_YES
 		
-	def input(self, title, message):
+	def input(self, title, message, default = ""):
 		dialog = gtk.Dialog(title, self.mainwindow, gtk.DIALOG_MODAL, 
 			(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT,
 			 gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT))
@@ -1653,6 +1879,7 @@ class Emma:
 		dialog.vbox.pack_start(entry, False, True, 2)
 		label.show()
 		entry.show()
+		entry.set_text(default)
 		answer = dialog.run()
 		dialog.hide()
 		if answer != gtk.RESPONSE_ACCEPT:
@@ -1739,7 +1966,7 @@ class Emma:
 			iter = self.connections_model.iter_next(iter)
 		fp.close()
 		
-	def load_config(self):
+	def load_config(self, unpickled = False):
 		filename = self.get_config_file_name()
 		# todo get_charset(self.config["db_codeset"]);
 		# printf("system charset: '%s'\n", self.config["db_codeset"].c_str());
@@ -1776,7 +2003,8 @@ class Emma:
 			"template1_last 150 records": "select * from $table$ order by $primary_key$ desc limit 150",
 			"template2_500 records in fs-order": "select * from $table$ limit 500",
 			"template3_quick filter 500": "select * from $table$ where $field_conditions$ limit 500",
-			"copy_record_as_csv_delim": ","
+			"copy_record_as_csv_delim": ",",
+			"ping_connection_interval": "300"
 		}
 		first = False
 		try:
@@ -1803,15 +2031,16 @@ class Emma:
 		keys.sort()
 		for name in keys:
 			value = self.config[name]
-			prefix = "connection_"
-			if name.startswith(prefix):
-				v = value.split(",")
-				port = ""
-				p = v[0].rsplit(":", 1)
-				if len(p) == 2:
-					port = p[1]
-					v[0] = p[0]
-				self.add_mysql_host(name[len(prefix):], v[0], port, v[1], v[2], v[3], first)
+			if not unpickled:
+				prefix = "connection_"
+				if name.startswith(prefix):
+					v = value.split(",")
+					port = ""
+					p = v[0].rsplit(":", 1)
+					if len(p) == 2:
+						port = p[1]
+						v[0] = p[0]
+					self.add_mysql_host(name[len(prefix):], v[0], port, v[1], v[2], v[3], first)
 			
 			prefix = "template";
 			if name.startswith(prefix):
@@ -1828,6 +2057,14 @@ class Emma:
 				self.xml.get_widget("query_toolbar").insert(button, -1)
 				button.show()
 	
+		if not unpickled: return
+		for h in self.hosts:
+			h.__init__(self.add_sql_log, self.add_msg_log)
+			iter = self.connections_model.append(None, [h])
+			h.set_update_ui(self.redraw_host, iter) # call before init!
+			self.redraw_host(h, iter)
+			self.current_host = h
+		
 	def add_mysql_host(self, name, hostname, port, user, password, database, isfirst):
 		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database)
 		iter = self.connections_model.append(None, [host])
@@ -2019,12 +2256,17 @@ class Emma:
 			i = self.connections_model.append(iter, (table.fields[field],))
 		
 def start():
-	try:
-		Emma()
+	global new_instance
+	e = Emma()
+	while 1:
+		print "running", e
 		gtk.main()
-	except:
-		print "got exception:", sys.exc_type, ":", sys.exc_value
-		
+		del e
+		if not new_instance: break
+		e = new_instance
+		new_instance = None
+		print "initializing", e
+		e.__init__()
 
 if __name__ == "__main__": start()
 	

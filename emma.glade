@@ -54,6 +54,48 @@
 			<widget class="GtkMenu" id="menuitem1_menu">
 
 			  <child>
+			    <widget class="GtkImageMenuItem" id="save_workspace">
+			      <property name="visible">True</property>
+			      <property name="label" translatable="yes">save workspace</property>
+			      <property name="use_underline">True</property>
+			      <signal name="activate" handler="on_save_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
+
+			      <child internal-child="image">
+				<widget class="GtkImage" id="image313">
+				  <property name="visible">True</property>
+				  <property name="stock">gtk-save-as</property>
+				  <property name="icon_size">1</property>
+				  <property name="xalign">0.5</property>
+				  <property name="yalign">0.5</property>
+				  <property name="xpad">0</property>
+				  <property name="ypad">0</property>
+				</widget>
+			      </child>
+			    </widget>
+			  </child>
+
+			  <child>
+			    <widget class="GtkImageMenuItem" id="restore_workspace">
+			      <property name="visible">True</property>
+			      <property name="label" translatable="yes">restore workspace</property>
+			      <property name="use_underline">True</property>
+			      <signal name="activate" handler="on_restore_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
+
+			      <child internal-child="image">
+				<widget class="GtkImage" id="image314">
+				  <property name="visible">True</property>
+				  <property name="stock">gtk-open</property>
+				  <property name="icon_size">1</property>
+				  <property name="xalign">0.5</property>
+				  <property name="yalign">0.5</property>
+				  <property name="xpad">0</property>
+				  <property name="ypad">0</property>
+				</widget>
+			      </child>
+			    </widget>
+			  </child>
+
+			  <child>
 			    <widget class="GtkSeparatorMenuItem" id="separatormenuitem1">
 			      <property name="visible">True</property>
 			    </widget>
@@ -73,42 +115,8 @@
 		  </child>
 
 		  <child>
-		    <widget class="GtkMenuItem" id="python_menu">
+		    <widget class="GtkSeparatorMenuItem" id="separator4">
 		      <property name="visible">True</property>
-		      <property name="label" translatable="yes">Python</property>
-		      <property name="use_underline">True</property>
-
-		      <child>
-			<widget class="GtkMenu" id="python_menu_menu">
-
-			  <child>
-			    <widget class="GtkImageMenuItem" id="reload_python_init">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">_reload python init</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_reload_python_init_activate" last_modification_time="Sun, 11 Dec 2005 16:52:35 GMT"/>
-
-			      <child internal-child="image">
-				<widget class="GtkImage" id="image175">
-				  <property name="visible">True</property>
-				  <property name="stock">gtk-refresh</property>
-				  <property name="icon_size">1</property>
-				  <property name="xalign">0.5</property>
-				  <property name="yalign">0.5</property>
-				  <property name="xpad">0</property>
-				  <property name="ypad">0</property>
-				</widget>
-			      </child>
-			    </widget>
-			  </child>
-
-			  <child>
-			    <widget class="GtkSeparatorMenuItem" id="separator4">
-			      <property name="visible">True</property>
-			    </widget>
-			  </child>
-			</widget>
-		      </child>
 		    </widget>
 		  </child>
 
@@ -129,7 +137,7 @@
 			      <signal name="activate" handler="on_changelog_activate" last_modification_time="Sat, 12 Nov 2005 23:41:31 GMT"/>
 
 			      <child internal-child="image">
-				<widget class="GtkImage" id="image176">
+				<widget class="GtkImage" id="image315">
 				  <property name="visible">True</property>
 				  <property name="stock">gtk-about</property>
 				  <property name="icon_size">1</property>
@@ -762,6 +770,8 @@
 			      <property name="visible_vertical">True</property>
 			      <property name="is_important">False</property>
 			      <signal name="clicked" handler="on_execute_query_clicked" last_modification_time="Sat, 21 Jan 2006 20:17:24 GMT"/>
+			      <accelerator key="Return" modifiers="GDK_CONTROL_MASK" signal="clicked"/>
+			      <accelerator key="F9" modifiers="0" signal="clicked"/>
 			    </widget>
 			    <packing>
 			      <property name="expand">False</property>
@@ -780,6 +790,7 @@
 			      <property name="visible_vertical">True</property>
 			      <property name="is_important">False</property>
 			      <signal name="clicked" handler="on_save_query_clicked" last_modification_time="Sat, 21 Jan 2006 20:17:35 GMT"/>
+			      <accelerator key="S" modifiers="GDK_CONTROL_MASK" signal="clicked"/>
 			    </widget>
 			    <packing>
 			      <property name="expand">False</property>
@@ -798,6 +809,7 @@
 			      <property name="visible_vertical">True</property>
 			      <property name="is_important">False</property>
 			      <signal name="clicked" handler="on_load_query_clicked" last_modification_time="Sat, 21 Jan 2006 20:17:42 GMT"/>
+			      <accelerator key="O" modifiers="GDK_CONTROL_MASK" signal="clicked"/>
 			    </widget>
 			    <packing>
 			      <property name="expand">False</property>
@@ -895,6 +907,7 @@
 			      <property name="visible_vertical">True</property>
 			      <property name="is_important">False</property>
 			      <signal name="clicked" handler="on_newquery_button_clicked" last_modification_time="Sat, 21 Jan 2006 20:18:09 GMT"/>
+			      <accelerator key="T" modifiers="GDK_CONTROL_MASK" signal="clicked"/>
 			    </widget>
 			    <packing>
 			      <property name="expand">False</property>
@@ -913,6 +926,7 @@
 			      <property name="visible_vertical">True</property>
 			      <property name="is_important">False</property>
 			      <signal name="clicked" handler="on_closequery_button_clicked" last_modification_time="Sat, 21 Jan 2006 20:18:14 GMT"/>
+			      <accelerator key="W" modifiers="GDK_CONTROL_MASK" signal="clicked"/>
 			    </widget>
 			    <packing>
 			      <property name="expand">False</property>
@@ -986,6 +1000,7 @@
 			  <property name="tab_pos">GTK_POS_TOP</property>
 			  <property name="scrollable">True</property>
 			  <property name="enable_popup">False</property>
+			  <signal name="switch_page" handler="on_query_notebook_switch_page" last_modification_time="Wed, 01 Mar 2006 19:37:49 GMT"/>
 
 			  <child>
 			    <widget class="GtkVPaned" id="first_query">
@@ -1157,6 +1172,7 @@ select * from user order by user_id desc,
 					  <property name="visible_horizontal">True</property>
 					  <property name="visible_vertical">True</property>
 					  <property name="is_important">False</property>
+					  <signal name="clicked" handler="on_query_result_font_clicked" last_modification_time="Wed, 01 Mar 2006 19:09:38 GMT"/>
 					</widget>
 					<packing>
 					  <property name="expand">False</property>
