@@ -1,0 +1,57 @@
+#gtk-theme-name = "MS-Windows"
+gtk-icon-sizes = "gtk-menu=13,13:gtk-small-toolbar=16,16:gtk-large-toolbar=24,24:gtk-dnd=32,32"
+gtk-toolbar-icon-size = large-toolbar
+
+# disable images in buttons. i've only seen ugly delphi apps use this feature.
+gtk-button-images = 1
+
+# enable/disable images in menus. most "stock" microsoft apps don't use these, except sparingly.
+# the office apps use them heavily, though.
+gtk-menu-images = 1
+
+# use the win32 button ordering instead of the GNOME HIG one, where applicable
+gtk-alternative-button-order = 1
+
+style "msw-default"
+{
+  GtkWidget::interior-focus = 1
+  GtkOptionMenu::indicator-size = { 9, 5 }
+  GtkOptionMenu::indicator-spacing = { 7, 5, 2, 2 }
+  GtkSpinButton::shadow-type = none
+
+  # Owen and I disagree that these should be themable
+  #GtkUIManager::add-tearoffs = 0
+  #GtkComboBox::add-tearoffs = 0
+  GtkComboBox::shadow-type = none
+  GtkNotebook::shadow-type = none
+  #GtkMenuBar::shadow-type = none
+  GtkVBox::shadow-type = none
+  GtkHBox::shadow-type = none
+  
+  GtkComboBox::appears-as-list = 1
+  GtkComboBox::focus-on-click = 1
+  
+  GOComboBox::add_tearoffs = 0
+
+  GtkTreeView::allow-rules = 1
+  GtkTreeView::expander-size = 11
+
+  # etched-in is closer to how Win32's explorer.exe does things, but it makes apps with
+  # multiple toolbars or a menubar and a toolbar look like garbage
+  GtkToolbar::shadow-type = none
+  GtkHandleBox::shadow-type = none
+  GtkTreeView::shadow-type = none
+  GtkTreeViewColumn::shadow-type = none
+  
+	xthickness = 1
+	ythickness = 1
+	GtkPaned::shadow-type = none
+  GtkPaned::handle_size = 7
+  GtkButton::focus-padding = 0
+
+	
+  engine "wimp" 
+  {
+  }
+}
+class "*" style "msw-default"

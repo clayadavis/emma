@@ -21,7 +21,14 @@ new_instance = None
 re_src_after_order = "(?:[ \r\n\t](?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$))"
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order + ")"
 
-emma_path = os.path.dirname(emmalib_file)
+print os.name
+if os.name in ["win32", "nt"]:
+    emma_path = os.path.dirname(emmalib_file)
+    emma_path = os.path.dirname(emma_path)
+    emma_path = os.path.dirname(emma_path)
+else:
+    emma_path = os.path.dirname(emmalib_file)
+
 icons_path = os.path.join(emma_path, "icons")
 
 class Emma:
