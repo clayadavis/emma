@@ -1,0 +1,15 @@
+Source: kodos
+Section: python
+Priority: optional
+Maintainer: Matthias Klose <doko@debian.org>
+Build-Depends-Indep: debhelper (>= 4.1.67), python-dev
+Standards-Version: 3.6.2
+
+Package: kodos
+Architecture: all
+Depends: ${python:Depends}, python-qt3, python-dev
+Description: A visual regular expression editor
+ Kodos is an application to aid in the creation and debugging of
+ regular expressions in python. The GUI for Kodos should eliminate the
+ need for using the python interpreter for regex design in most
+ instances.

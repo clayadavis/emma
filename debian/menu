@@ -1,0 +1,6 @@
+?package(kodos):\
+	needs="X11"\
+	section="Apps/Programming"\
+	title="Kodos"\
+	icon="/usr/share/pixmaps/kodos.xpm"\
+	command="/usr/bin/kodos"

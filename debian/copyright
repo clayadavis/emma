@@ -1,0 +1,19 @@
+This package was debianized by Matthias Klose <doko@debian.org> on
+Fri, 16 Jan 2004 07:29:40 +0100.
+
+It was downloaded from http://kodos.sf.net/
+
+Upstream Author: Phil Schwartz
+
+Copyright:
+
+		    GNU GENERAL PUBLIC LICENSE
+		       Version 2, June 1991
+
+ Copyright (C) 1989, 1991 Free Software Foundation, Inc.
+                       59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+On Debian GNU/Linux systems, the complete text of the GNU General
+Public License can be found in `/usr/share/common-licenses/GPL'.

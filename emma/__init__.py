@@ -1,17 +1,28 @@
 import sys
 import os
+import time
+import re
+import gc
+import pickle
+
 import gtk
 from gtk import keysyms
 import gobject
 import gtk.gdk
 import gtk.glade
-import time
-import re
-import gc
+
 from mysql_host import *
 from mysql_query_tab import *
-import pickle
-version = "1.0"
+
+version = "0.2"
+
+if sys.platform == 'win32':
+	lib_path = "emma"
+else:
+	lib_path = "share/emma"
+
+icons_path = os.path.join(lib_path, "pixmaps", emma)
+emma_path = os.path.join(lib_path, "emma")
 
 new_instance = None
 
@@ -22,13 +33,9 @@ class Emma:
 	def __init__(self):
 		self.created_once = {}
 		filename = "emma.glade"
-		directories = ["./", "../", "/share/glade/"]
-		for i in directories:
-			self.glade_file = i + filename
-			if os.access(self.glade_file, os.R_OK):
-				break
-		else:
-			print filename + " not found in", directories
+		self.glade_file = os.path.join(emma_path, filename)
+		if not os.access(self.glade_file, os.R_OK):
+			print self.glade_file, "not found!"
 			sys.exit(-1)
 		
 		self.xml = gtk.glade.XML(self.glade_file)
@@ -44,6 +51,9 @@ class Emma:
 		self.sql_log_tv.set_model(self.sql_log_model)
 		self.sql_log_tv.append_column(gtk.TreeViewColumn("time", gtk.CellRendererText(), text=0))
 		self.sql_log_tv.append_column(gtk.TreeViewColumn("query", gtk.CellRendererText(), markup=1))
+		if hasattr(self, "state"):
+			for log in self.state["sql_logs"]:
+				self.sql_log_model.append(log)
 		
 		# setup msg
 		self.msg_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
@@ -51,6 +61,11 @@ class Emma:
 		self.msg_tv.set_model(self.msg_model)
 		self.msg_tv.append_column(gtk.TreeViewColumn("time", gtk.CellRendererText(), text=0))
 		self.msg_tv.append_column(gtk.TreeViewColumn("message", gtk.CellRendererText(), text=1))
+		
+		self.blob_tv = self.xml.get_widget("blob_tv")
+		self.blob_tv.set_sensitive(False)
+		self.blob_buffer = self.blob_tv.get_buffer()
+		self.blob_view_visible = False
 		
 		# setup connections
 		self.connections_model = gtk.TreeStore(gobject.TYPE_PYOBJECT);
@@ -146,7 +161,14 @@ class Emma:
 			hosts.append(host)
 			iter = self.connections_model.iter_next(iter)
 		
-		return {"hosts": hosts, "queries": self.queries}
+		sql_logs = []
+		iter = self.sql_log_model.get_iter_root()
+		while iter:
+			log = self.sql_log_model.get(iter, 0, 1)
+			sql_logs.append(log)
+			iter = self.sql_log_model.iter_next(iter)
+		
+		return {"hosts": hosts, "queries": self.queries, "sql_logs": sql_logs}
 		
 	def add_query_tab(self, qt):
 		self.current_query = qt
@@ -619,14 +641,35 @@ class Emma:
 		q.apply_record.set_sensitive(False)
 		return True
 		
+	def on_message_notebook_switch_page(self, nb, pointer, page):
+		self.blob_view_visible = (page == 2)
+		if self.blob_view_visible:
+			self.on_query_view_cursor_changed(self.current_query.treeview)
+		
 	def on_query_view_cursor_changed(self, tv):
 		q = self.current_query
-		if not q.append_iter:
-			return
 		path, column = q.treeview.get_cursor()
-		if path == q.model.get_path(q.append_iter):
+		
+		if not path:
 			return
-		self.on_apply_record_tool_clicked(None)
+		
+		if self.blob_view_visible and column:
+			iter = q.model.get_iter(path)
+			col = q.treeview.get_columns().index(column)
+			value = q.model.get_value(iter, col)
+			if value is None:
+				self.blob_buffer.set_text("")
+			else:
+				self.blob_buffer.set_text(value)
+			self.blob_tv.set_sensitive(True)
+		else:
+			self.blob_buffer.set_text("")
+			self.blob_tv.set_sensitive(False)
+		
+		if q.append_iter:
+			if path == q.model.get_path(q.append_iter):
+				return
+			self.on_apply_record_tool_clicked(None)
 		
 	def on_execute_query_clicked(self, button = None, query = None):
 		if not self.current_query: return
@@ -852,6 +895,49 @@ class Emma:
 		q.label.set_text(' '.join(result))
 		# todo update_buttons();	
 		gc.collect()
+		
+	def on_save_result_clicked(self, button):
+		if not self.current_query:
+			return
+		
+		d = self.assign_once("save results dialog", 
+			gtk.FileChooserDialog, "save results", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if os.path.exists(filename):
+			if not os.path.isfile(filename):
+				self.show_message("save results", "%s already exists and is not a file!" % filename)
+				return
+			if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
+				return
+		q = self.current_query
+		iter = q.model.get_iter_first()
+		indices = range(q.model.get_n_columns())
+		field_delim = self.config["save_result_as_csv_delim"]
+		line_delim = self.config["save_result_as_csv_line_delim"]
+		try:
+			fp = file(filename, "wb")
+			for search, replace in {"\\n": "\n", "\\r": "\r", "\\t": "\t", "\\0": "\0"}.iteritems():
+				field_delim = field_delim.replace(search, replace)
+				line_delim = line_delim.replace(search, replace)
+			while iter:
+				row = q.model.get(iter, *indices)
+				for field in row:
+					value = field
+					if value is None: value = ""
+					fp.write(value.replace(field_delim, "\\" + field_delim))
+					fp.write(field_delim)
+				fp.write(line_delim)
+				iter = q.model.iter_next(iter)
+			fp.close()
+		except:
+			self.show_message("save results", "error writing query to file %s: %s" % (filename, sys.exc_value))
+		
 		
 	def assign_once(self, name, creator, *args):
 		try:
@@ -2004,6 +2090,8 @@ class Emma:
 			"template2_500 records in fs-order": "select * from $table$ limit 500",
 			"template3_quick filter 500": "select * from $table$ where $field_conditions$ limit 500",
 			"copy_record_as_csv_delim": ",",
+			"save_result_as_csv_delim": ",",
+			"save_result_as_csv_line_delim": "\\n",
 			"ping_connection_interval": "300"
 		}
 		first = False
@@ -2086,7 +2174,7 @@ class Emma:
 		if now: timestamp = "%s.%02d" % (timestamp, now)
 		iter = self.sql_log_model.append((timestamp, log))
 		self.sql_log_tv.scroll_to_cell(self.sql_log_model.get_path(iter))
-		self.xml.get_widget("message_notebook").set_current_page(0)
+		#self.xml.get_widget("message_notebook").set_current_page(0)
 		self.process_events()
 		
 	def process_events(self):
@@ -2117,12 +2205,14 @@ class Emma:
 		return None
 
 	def load_icons(self):
-		self.icon_prefix = "/usr/share/pixmaps/yamysqlfront/"; # todo
 		self.icons = {}
-		for icon in ["offline_host", "host", "db", "table", "field", "yamysqlfront"]:
-			try: self.icons[icon] = gtk.gdk.pixbuf_new_from_file(self.icon_prefix + icon + ".png")
-			except: print "could not load", self.icon_prefix + icon + ".png"
-		self.mainwindow.set_icon(self.icons["yamysqlfront"])
+		for icon in ["offline_host", "host", "db", "table", "field", "emma"]:
+			filename = os.path.join(icon_prefix, icon + ".png")
+			try: 
+				self.icons[icon] = gtk.gdk.pixbuf_new_from_file(filename)
+			except: 
+				print "could not load", filename
+		self.mainwindow.set_icon(self.icons["emma"])
 		
 	def refresh_processlist(self, *args):
 		if not self.current_host: return

@@ -1,0 +1,83 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# GNU copyright 1997 to 1999 by Joey Hess.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+
+
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	INSTALL_PROGRAM += -s
+endif
+
+build: build-stamp
+build-stamp:
+	dh_testdir
+	python setup.py build
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp
+	rm -rf build
+	-find . -name '*.py[co]' | xargs rm -f
+	dh_clean 
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+	python setup.py install --prefix=$(CURDIR)/debian/kodos/usr
+	-find debian/kodos -name '*.py[co]' | xargs rm -f
+	mkdir -p debian/kodos/usr/share/kodos/modules
+	mv debian/kodos/usr/lib/python2.3/site-packages/kodos/modules/* \
+		debian/kodos/usr/share/kodos/modules/.
+	rm -rf debian/kodos/usr/lib
+	mv debian/kodos/usr/bin/kodos.py debian/kodos/usr/bin/kodos
+	mkdir -p debian/kodos/usr/share/pixmaps
+	cp -p debian/kodos.xpm  debian/kodos/usr/share/pixmaps/.
+
+# Build architecture-independent files here.
+binary-indep: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
+	dh_installdocs
+	mv debian/kodos/usr/share/kodos/help \
+	    debian/kodos/usr/share/kodos/images \
+	    debian/kodos/usr/share/kodos/screenshots \
+		debian/kodos/usr/share/doc/kodos/
+	dh_link /usr/share/doc/kodos/help /usr/share/kodos/help
+	dh_link /usr/share/doc/kodos/images /usr/share/kodos/images
+	dh_link /usr/share/doc/kodos/screenshots /usr/share/kodos/screenshots
+	ln -s kodos.html debian/kodos/usr/share/doc/kodos/help/index.html
+#	dh_installexamples
+	dh_installmenu
+	dh_installman
+	dh_link
+	dh_compress -X.py
+	dh_fixperms
+	dh_python
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+# Build architecture-dependent files here.
+binary-arch: build install
+# We have nothing to do by default.
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure

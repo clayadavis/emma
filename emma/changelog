@@ -30,6 +30,8 @@ emma (0.2) unstable; urgency=low
   * save workspace
   * load workspace
   * first easy pickly/unpickle
+  Fri, 03 Mar 2006 18:59:23 +0100
+  * save result
  -- Florian Schmidt <schmidt_florian@gmx.de>  
 
 emma (0.1) unstable; urgency=low

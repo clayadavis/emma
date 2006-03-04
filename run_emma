@@ -1,4 +1,7 @@
-#!/usr/bin/python2.4
+#!/usr/bin/python
+import sys
+
+sys.path.insert(0, "/usr/share/emma")
 
 import emma
 
