@@ -1,0 +1,4 @@
+#!/usr/bin/python2.4
+import emmalib
+
+emmalib.start()
