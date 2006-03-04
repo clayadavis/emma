@@ -22,7 +22,6 @@ re_src_after_order = "(?:[ \r\n\t](?:limit.*|procedure.*|for update.*|lock in sh
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order + ")"
 
 emma_path = os.path.dirname(emmalib_file)
-#emma_path = os.path.dirname(emmalib.__file__)
 icons_path = os.path.join(emma_path, "icons")
 
 class Emma:
@@ -1149,6 +1148,8 @@ class Emma:
 	def on_rename_query_tab_clicked(self, button):
 		new_name = self.input("rename tab", "please enter the new name of this tab:",
 			self.query_notebook.get_tab_label_text(self.current_query.page))
+		if new_name is None:
+		    return
 		self.query_notebook.set_tab_label_text(self.current_query.page, new_name)
 		
 	def on_processlist_refresh_value_change(self, button):
@@ -1180,7 +1181,7 @@ class Emma:
 		aboutdialog.hide()
 
 	def on_changelog_activate(self, item):
-		fp = file("changelog")
+		fp = file(os.path.join(emma_path, "changelog"))
 		changelog = fp.read()
 		fp.close()
 		w = self.xml.get_widget("changelog_window")

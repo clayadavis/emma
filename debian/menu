@@ -1,6 +1,6 @@
-?package(kodos):\
+?package(emma):\
 	needs="X11"\
-	section="Apps/Programming"\
-	title="Kodos"\
-	icon="/usr/share/pixmaps/kodos.xpm"\
-	command="/usr/bin/kodos"
+	section="Apps/Databases"\
+	title="Emma"\
+	icon="/usr/share/emma/emmalib/icons/emma.png"\
+	command="/usr/bin/emma"

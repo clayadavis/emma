@@ -41,6 +41,7 @@ install: build
 	dh_installdirs
 	python2.4 setup.py install --prefix=$(CURDIR)/debian/emma/usr
 	-find debian/emma -name '*.py[co]' | xargs rm -f
+	mkdir -p debian/emma/usr/share/emma/
 	mv debian/emma/usr/lib/python2.4/site-packages/emmalib \
 		debian/emma/usr/share/emma/emmalib
 	rm -rf debian/emma/usr/lib
@@ -53,14 +54,6 @@ binary-indep: build install
 	dh_testroot
 	dh_installchangelogs 
 	dh_installdocs
-	mv debian/kodos/usr/share/kodos/help \
-	    debian/kodos/usr/share/kodos/images \
-	    debian/kodos/usr/share/kodos/screenshots \
-		debian/kodos/usr/share/doc/kodos/
-	dh_link /usr/share/doc/kodos/help /usr/share/kodos/help
-	dh_link /usr/share/doc/kodos/images /usr/share/kodos/images
-	dh_link /usr/share/doc/kodos/screenshots /usr/share/kodos/screenshots
-	ln -s kodos.html debian/kodos/usr/share/doc/kodos/help/index.html
 #	dh_installexamples
 	dh_installmenu
 	dh_installman

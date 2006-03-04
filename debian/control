@@ -7,7 +7,7 @@ Standards-Version: 3.6.2
 
 Package: emma
 Architecture: all
-Depends: ${python2.4:Depends}, python2.4-gtk2, python2.4-glade2, python2.4-mysqldb
+Depends: python2.4, python2.4-gtk2, python2.4-glade2, python2.4-mysqldb
 Description: A graphical toolkit for MySQL database developers and administrators
  It provides dialogs to create or modify mysql databases, tables and 
  associated indexes. it has a built-in syntax highlighting sql editor with 

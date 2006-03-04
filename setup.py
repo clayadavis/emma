@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.4
 import os
 import os.path
 import sys
@@ -14,8 +14,8 @@ setup(name="emma",
       author_email="fastflo@users.sourceforge.net",
       url="http://emma.sourceforge.net",
       scripts=['emma'],
-      ##package_dir={'': 'modules'},
-      packages=['emmalib', "."],
+      packages=['emmalib'],
+      package_data={'emmalib': ['emma.glade', "changelog", 'icons/*.png']},
       license="GPL",
       long_description="""
 Emma is a graphical toolkit for MySQL database developers and administrators

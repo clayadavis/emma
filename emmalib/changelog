@@ -32,7 +32,9 @@ emma (0.2) unstable; urgency=low
   * first easy pickly/unpickle
   Fri, 03 Mar 2006 18:59:23 +0100
   * save result
- -- Florian Schmidt <schmidt_florian@gmx.de>  
+  Sat, 04 Mar 2006 18:53:21 +0100
+  * debian package
+ -- Florian Schmidt <schmidt_florian@gmx.de>  Sat, 04 Mar 2006 18:53:21 +0100
 
 emma (0.1) unstable; urgency=low
   * copied yamysqlfront.glade to emma.glade
