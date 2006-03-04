@@ -5,22 +5,18 @@ import sys
 from glob import glob
 from distutils.core import setup
 
-import emma
+import emmalib
 
 setup(name="emma",
-      version=emma.version,
+      version=emmalib.version,
       description="emma is the extendable mysql managing assistant",
       author="Florian Schmidt",
       author_email="fastflo@users.sourceforge.net",
       url="http://emma.sourceforge.net",
-      scripts=['run_emma.py'],
+      scripts=['emma'],
       ##package_dir={'': 'modules'},
-      packages=['emma', "."],
-      data_files=[(emma.icons_path, glob(os.path.join("icons", "*.png"))),
-                  (emma.emma_path, glob('emma.glade'))
-                  ],
+      packages=['emmalib', "."],
       license="GPL",
-      extra_path='emma',
       long_description="""
 Emma is a graphical toolkit for MySQL database developers and administrators
 It provides dialogs to create or modify mysql databases, tables and 

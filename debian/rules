@@ -23,7 +23,7 @@ endif
 build: build-stamp
 build-stamp:
 	dh_testdir
-	python setup.py build
+	python2.4 setup.py build
 	touch build-stamp
 
 clean:
@@ -39,15 +39,13 @@ install: build
 	dh_testroot
 	dh_clean -k 
 	dh_installdirs
-	python setup.py install --prefix=$(CURDIR)/debian/kodos/usr
-	-find debian/kodos -name '*.py[co]' | xargs rm -f
-	mkdir -p debian/kodos/usr/share/kodos/modules
-	mv debian/kodos/usr/lib/python2.3/site-packages/kodos/modules/* \
-		debian/kodos/usr/share/kodos/modules/.
-	rm -rf debian/kodos/usr/lib
-	mv debian/kodos/usr/bin/kodos.py debian/kodos/usr/bin/kodos
-	mkdir -p debian/kodos/usr/share/pixmaps
-	cp -p debian/kodos.xpm  debian/kodos/usr/share/pixmaps/.
+	python2.4 setup.py install --prefix=$(CURDIR)/debian/emma/usr
+	-find debian/emma -name '*.py[co]' | xargs rm -f
+	mv debian/emma/usr/lib/python2.4/site-packages/emmalib \
+		debian/emma/usr/share/emma/emmalib
+	rm -rf debian/emma/usr/lib
+	#mkdir -p debian/kodos/usr/share/pixmaps
+	#cp -p debian/kodos.xpm  debian/kodos/usr/share/pixmaps/.
 
 # Build architecture-independent files here.
 binary-indep: build install

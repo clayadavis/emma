@@ -1,0 +1,17 @@
+debian
+	- source
+	- python, pygtk, gtk, MySQLdb, libmysqlclient dependencies
+	- debian file system locations
+	candidates: existing debian python app examples
+	
+plattform independent
+	- source
+	- locations?
+	candidates: distutils
+
+win32 binary
+	- compiled
+	- no dependencies
+	- "one-click" installer
+	candidates: pyinstaller - not an "installer"!
+	candidates: py2exe, [inno setup|NSIS] (http://www.pygtk.org/articles/bitpodder/BitPodder.htm)

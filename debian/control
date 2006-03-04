@@ -1,15 +1,19 @@
-Source: kodos
+Source: emma
 Section: python
 Priority: optional
-Maintainer: Matthias Klose <doko@debian.org>
-Build-Depends-Indep: debhelper (>= 4.1.67), python-dev
+Maintainer: Florian Schmidt <schmidt_florian@gmx.de>
+Build-Depends-Indep: debhelper (>= 4.1.67), python2.4-dev
 Standards-Version: 3.6.2
 
-Package: kodos
+Package: emma
 Architecture: all
-Depends: ${python:Depends}, python-qt3, python-dev
-Description: A visual regular expression editor
- Kodos is an application to aid in the creation and debugging of
- regular expressions in python. The GUI for Kodos should eliminate the
- need for using the python interpreter for regex design in most
- instances.
+Depends: ${python2.4:Depends}, python2.4-gtk2, python2.4-glade2, python2.4-mysqldb
+Description: A graphical toolkit for MySQL database developers and administrators
+ It provides dialogs to create or modify mysql databases, tables and 
+ associated indexes. it has a built-in syntax highlighting sql editor with 
+ table- and fieldname tab-completion and automatic sql statement formatting. 
+ the results of an executed query are displayed in a resultset where the record-
+ data can be edited by the user, if the sql statemant allows for it. the sql 
+ editor and resultset-view are grouped in tabs. results can be exported to csv 
+ files. multiple simultanios opend mysql connections are possible. 
+ Emma is the successor of yamysqlfront.
