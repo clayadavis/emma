@@ -955,7 +955,7 @@ class Emma:
 			update_ui(False, fp.tell())
 			if not limit_db or found_db:
 				if exclude and exclude_regex.match(query):
-					print "skipping query", [query]
+					print "skipping query", [query[0:80]]
 				elif not host.query(query, True, append_to_log) and stop_on_error:
 					self.show_message("execute query from disk", "an error occoured. maybe remind the line number and press cancel to close this dialog!")
 					self.query_from_disk = False
@@ -2164,7 +2164,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			replace = ""
 			while 1:
 				primary_key = ""
-				for name, props in current_table.fields.iteritems():
+				for name in current_table.field_order:
+					props = current_table.fields[name]
 					if props[3] != "PRI": continue
 					if primary_key: primary_key += " " + order_dir + ", "
 					primary_key += "`%s`" % self.escape_fieldname(name)
@@ -2172,7 +2173,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					replace = primary_key
 					break
 				key = ""
-				for name, props in current_table.fields.iteritems():
+				for name in current_table.field_order:
+					props = current_table.fields[name]
 					if props[3] != "UNI": continue
 					if key: key +=  " " + order_dir + ", "
 					key += "`%s`" % self.escape_fieldname(name)

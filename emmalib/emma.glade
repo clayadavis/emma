@@ -1214,6 +1214,24 @@ select * from user order by user_id desc,
 					  <property name="homogeneous">True</property>
 					</packing>
 				      </child>
+
+				      <child>
+					<widget class="GtkToolButton" id="remember_order">
+					  <property name="visible">True</property>
+					  <property name="tooltip" translatable="yes">remember order for this table!</property>
+					  <property name="label" translatable="yes"></property>
+					  <property name="use_underline">True</property>
+					  <property name="stock_id">gtk-dialog-warning</property>
+					  <property name="visible_horizontal">True</property>
+					  <property name="visible_vertical">True</property>
+					  <property name="is_important">False</property>
+					  <signal name="clicked" handler="on_remember_order_clicked" last_modification_time="Sat, 11 Mar 2006 17:13:03 GMT"/>
+					</widget>
+					<packing>
+					  <property name="expand">False</property>
+					  <property name="homogeneous">True</property>
+					</packing>
+				      </child>
 				    </widget>
 				    <packing>
 				      <property name="padding">0</property>
