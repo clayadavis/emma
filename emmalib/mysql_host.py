@@ -90,12 +90,12 @@ class mysql_host:
 		self.connected = False
 		if self.update_ui: self.update_ui(self, *self.update_ui_args)
 		
-	def query(self, query, check_use=True):
+	def query(self, query, check_use=True, append_to_log=True):
 		if not self.handle:
 			self.msg_log("not connected! can't execute %s, %s, %s" % (query, str(self.handle), str(self)))
 			return
-			
-		self.sql_log(query)
+		if append_to_log:
+			self.sql_log(query)
 		try:
 			self.query_time = 0
 			start = time.time()

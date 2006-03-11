@@ -1,9 +1,11 @@
 import sys
 import os
+from stat import *
 import time
 import re
 import gc
 import pickle
+import datetime
 
 import gtk
 from gtk import keysyms
@@ -11,9 +13,14 @@ import gobject
 import gtk.gdk
 import gtk.glade
 
-from emmalib import __file__ as emmalib_file
-from emmalib.mysql_host import *
-from emmalib.mysql_query_tab import *
+if __name__ != "__main__":
+	from emmalib import __file__ as emmalib_file
+	from emmalib.mysql_host import *
+	from emmalib.mysql_query_tab import *
+else:
+	emmalib_file = __file__
+	from mysql_host import *
+	from mysql_query_tab import *
 
 version = "0.2"
 new_instance = None
@@ -21,7 +28,7 @@ new_instance = None
 re_src_after_order = "(?:[ \r\n\t](?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$))"
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order + ")"
 
-print os.name
+print "os:", os.name
 if os.name in ["win32", "nt"]:
     emma_path = os.path.dirname(emmalib_file)
     emma_path = os.path.dirname(emma_path)
@@ -30,6 +37,7 @@ else:
     emma_path = os.path.dirname(emmalib_file)
 
 icons_path = os.path.join(emma_path, "icons")
+last_update = 0
 
 class Emma:
 	def __init__(self):
@@ -235,12 +243,25 @@ class Emma:
 				break # found select
 		return result
 	
-	def read_expression(self, query):
+	def read_expression(self, query, start=0, concat=True, update_function=None, update_offset=0, icount=0):
+		# r'(?is)("(?:[^\\]|\\.)*?")|(\'(?:[^\\]|\\.)*?\')|(`(?:[^\\]|\\.)*?`)|([^ \r\n\t]*[ \r\n\t]*\()|(\))|([0-9]+(?:\\.[0-9]*)?)|([^ \r\n\t,()"\'`]+)|(,)')
 		try:	r = self.query_expr_re
-		except: r = self.query_expr_re = re.compile(
-			r'(?is)("(?:[^\\]|\\.)*?")|(\'(?:[^\\]|\\.)*?\')|(`(?:[^\\]|\\.)*?`)|([^ \r\n\t]*[ \r\n\t]*\()|(\))|([0-9]+(?:\\.[0-9]*)?)|([^ \r\n\t,()"\'`]+)|(,)')
+		except: r = self.query_expr_re = re.compile(r"""
+			(?is)
+			("(?:[^\\]|\\.)*?")|			# double quoted strings
+			('(?:[^\\]|\\.)*?')|			# single quoted strings
+			(`(?:[^\\]|\\.)*?`)|			# backtick quoted strings
+			(/\*.*?\*/)|					# c-style comments
+			(\#.*$)|						# shell-style comments
+			(\))|							# closing parenthesis 
+			([0-9]+(?:\\.[0-9]*)?)|			# numbers
+			([,;])|							# comma or semicolon
+			([^ \r\n\t\(\)]*[ \r\n\t]*\()|	# opening parenthesis with leading whitespace
+			([^ \r\n\t,;()"'`]+)			# everything else...
+		""", re.VERBOSE)
+		
 		# print "read expr in", query
-		match = re.search(r, query)
+		match = r.search(query, start)
 		#if match: print match.groups()
 		if not match: return (None, None)
 		for i in range(1, match.lastindex + 1):
@@ -248,14 +269,22 @@ class Emma:
 				t = match.group(i)
 				e = match.end(i)
 				current_token = t
-				while current_token[len(current_token) - 1] == "(":
-					# print "continuing recursion with", query[e:]
-					exp, end = self.read_expression(query[e:])
-					if not exp: break
-					e += end
-					t += " " + exp
-					if exp == ")": break
-									
+				if current_token[len(current_token) - 1] == "(":
+					while 1:
+						icount += 1
+						if update_function is not None and icount >= 10:
+							icount = 0
+							update_function(False, update_offset + e)
+						#print "at", [query[e:e+15]], "..."
+						exp, end = self.read_expression(query, e, False, update_function, update_offset, icount)
+						#print "got inner exp:", [exp]
+						if not exp: break
+						e = end
+						if concat: 
+							t += " " + exp
+						if exp == ")": 
+							break
+						
 				return (t, e)
 		print "should not happen!"
 		return (None, None)
@@ -671,8 +700,206 @@ class Emma:
 			if path == q.model.get_path(q.append_iter):
 				return
 			self.on_apply_record_tool_clicked(None)
+			
+	def on_execute_query_from_disk_activate(self, button, filename=None):
+		if not self.current_host:
+			self.show_message("execute query from disk", "no host selected!")
+			return
+			
+		d = self.assign_once("execute_query_from_disk", self.xml.get_widget, "execute_query_from_disk")
+		fc = self.assign_once("eqfd_file_chooser", self.xml.get_widget, "eqfd_file_chooser")
+		if filename:
+			fc.set_filename(filename)
+		else:
+			#fc.set_filename("/home/flo/fact24_data_small.sql")
+			#fc.set_filename("/home/flo/very_small.sql")
+			fc.set_filename("/home/flo/out.sql")
+		d.show()
 		
-	def on_execute_query_clicked(self, button = None, query = None):
+	def on_eqfd_limit_db_toggled(self, button):
+		entry = self.assign_once("eqfd_db_entry", self.xml.get_widget, "eqfd_db_entry")
+		entry.set_sensitive(button.get_active())
+		
+	def on_abort_execute_from_disk_clicked(self, button):
+		d = self.assign_once("execute_query_from_disk", self.xml.get_widget, "execute_query_from_disk")
+		d.hide()
+		
+	def get_widget(self, name):
+		return self.assign_once("widget_%s" % name, self.xml.get_widget, name)
+
+	def read_one_query(self, fp, start=None, count_lines=0, update_function=None, only_use_queries=False, start_line=1):
+		current_query = []
+		self.read_one_query_started = True
+		while self.read_one_query_started:
+			gc.collect()
+			if start is None:
+				while 1:
+					line = fp.readline()
+					if line == "":
+						if len(current_query) > 0:
+							return (' '.join(current_query), start, count_lines)
+						return (None, start, count_lines)
+					if count_lines is not None:
+						count_lines += 1
+						
+					if update_function is not None:
+						lb = fp.tell() - len(line)
+						update_function(False, lb)
+						
+					if count_lines is not None and count_lines <= start_line:
+						#print count_lines
+						continue
+					first = line.lstrip("\r\n\t ")[0:15].lower()
+					if only_use_queries and first[0:3] != "use" and first != "create database":
+						continue
+					if line.lstrip(" \t")[0:2] != "--":
+						break
+					#print "skipping line", [line]
+				self.last_query_line = line
+				start = 0
+			else:
+				lb = fp.tell() - len(self.last_query_line)
+				line = self.last_query_line
+			qstart = start
+			while 1:
+				ident, end = self.read_expression(line, start, False, update_function, lb)
+				if end is not None:
+					end -= start
+				if not ident: break
+				if ident == ";": break
+				start += end
+				
+			if qstart != start:
+				current_query.append(line[qstart:start])
+			if not ident is None:
+				if ident == ";":
+					return (' '.join(current_query), start + end, count_lines)
+			start = None
+		return (None, None, None)
+		
+	def on_start_execute_from_disk_clicked(self, button):
+		host = self.current_host
+		d = self.get_widget("execute_query_from_disk")
+		fc = self.get_widget("eqfd_file_chooser")
+		filename = fc.get_filename()
+		try:
+			sbuf = os.stat(filename)
+		except:
+			self.show_message("execute query from disk", "%s does not exists!" % filename)
+			return
+		if not S_ISREG(sbuf.st_mode):
+			self.show_message("execute query from disk", "%s exists, but is not a regular file!" % filename)
+			return
+		
+		size = sbuf.st_size
+		try:
+			fp = file(filename, "rb")
+		except:
+			self.show_message("execute query from disk", "error opening query from file %s: %s" % (filename, sys.exc_value))
+			return
+		d.hide()
+		
+		start_line = self.get_widget("eqfd_start_line").get_value()
+		if start_line < 1:
+			start_line = 1
+		ui = self.get_widget("eqfd_update_interval")
+		update_interval = ui.get_value()
+		if update_interval == 0:
+			update_interval = 2
+			
+		p = self.get_widget("execute_from_disk_progress")
+		pb = self.get_widget("exec_progress")
+		offset_entry = self.get_widget("edfq_offset")
+		line_entry = self.get_widget("eqfd_line")
+		query_entry = self.get_widget("eqfd_query")
+		eta_label = self.get_widget("eqfd_eta")
+		append_to_log = self.get_widget("eqfd_append_to_log").get_active()
+		stop_on_error = self.get_widget("eqfd_stop_on_error").get_active()
+		limit_dbname = self.get_widget("eqfd_db_entry").get_text()
+		limit_db = self.get_widget("eqfd_limit_db").get_active() and limit_dbname != ""
+		
+		if limit_db:
+			limit_re = re.compile("(?is)^use[ \r\n\t]+`?" + re.escape(limit_dbname) + "`?|^create database[^`]+`?" + re.escape(limit_dbname) + "`?")
+			limit_end_re = re.compile("(?is)^use[ \r\n\t]+`?.*`?|^create database")
+		
+		last = 0
+		start = time.time()
+		
+		def update_ui(force=False, offset=0):
+			global last_update
+			now = time.time()
+			if not force and now - last_update < update_interval:
+				return
+			last_update = now
+			pos = offset
+			f = float(pos) / float(size)
+			expired = now - start
+			if expired > 10:
+				sr = float(expired) / float(pos) * float(size - pos)
+				remaining = " (%.0fs remaining)" % sr
+				eta_label.set_text("eta: %-19.19s" % datetime.datetime.fromtimestamp(now + sr))
+			else:
+				remaining = ""
+			query_entry.set_text(query[0:512])
+			offset_entry.set_text("%d" % pos)
+			line_entry.set_text("%d" % current_line)
+			pb.set_fraction(f)
+			pb_text = "%.2f%%%s" % (f * 100.0, remaining)
+			pb.set_text(pb_text)
+			self.process_events()
+		
+		new_line = 1
+		current_line = start
+		query = ""
+		p.show()
+		while time.time() - start < 0.10:
+			update_ui(True)
+		self.query_from_disk = True
+		line_offset = None
+		found_db = False
+		while self.query_from_disk:
+			current_line = new_line
+			query, line_offset, new_line = self.read_one_query(fp, line_offset, current_line, update_ui, limit_db and not found_db, start_line)
+			if current_line < start_line:
+				current_line = start_line
+				
+			if query is None:
+				break
+				
+			if limit_db:
+				if not found_db:
+					first = query.lstrip("\r\n\t ")[0:15].lower()
+					if (first[0:3] == "use" or first == "create database") and limit_re.search(query):
+						found_db = True
+				else:
+					if limit_end_re.search(query) and not limit_re.search(query):
+						found_db = False
+			
+			update_ui(False, fp.tell())
+			if not limit_db or found_db:
+				if not host.query(query, True, append_to_log) and stop_on_error:
+					self.show_message("execute query from disk", "an error occoured. maybe remind the line number and press cancel to close this dialog!")
+					self.query_from_disk = False
+					break;
+		query = ""
+		update_ui(True, fp.tell())
+		fp.close()
+		if not self.query_from_disk:
+			self.show_message("execute query from disk", "aborted by user whish - click cancel again to close window")
+			return
+		else:
+			self.show_message("execute query from disk", "done!")
+		p.hide()
+		
+	def on_cancel_execute_from_disk_clicked(self, button):
+		if not self.query_from_disk:
+			p = self.assign_once("execute_from_disk_progress", self.xml.get_widget, "execute_from_disk_progress")
+			p.hide()
+			return
+		self.read_one_query_started = False
+		self.query_from_disk = False
+	    
+	def on_execute_query_clicked(self, button=None, query=None):
 		if not self.current_query: return
 		q = self.current_query
 		if not query:
@@ -988,14 +1215,29 @@ class Emma:
 		answer = d.run()
 		d.hide()
 		if not answer == gtk.RESPONSE_ACCEPT: return
+			
 		filename = d.get_filename()
-		if not os.path.exists(filename):
+		try:
+			sbuf = os.stat(filename)
+		except:
 			self.show_message("load query", "%s does not exists!" % filename)
 			return
-		if not os.path.isfile(filename):
+		if not S_ISREG(sbuf.st_mode):
 			self.show_message("load query", "%s exists, but is not a file!" % filename)
 			return
-			
+		
+		size = sbuf.st_size
+		max = int(self.config["ask_execute_query_from_disk_min_size"])
+		print "%15d\n%15d" % (size, max)
+		if size > max:
+			if self.confirm("load query", """
+<b>%s</b> is very big (<b>%.2fMB</b>)!
+opening it in the normal query-view may need a very long time!
+if you just want to execute this skript file without editing and
+syntax-highlighting, i can open this file using the <b>execute file from disk</b> function.
+<b>shall i do this?</b>""" % (filename, size / 1024.0 / 1000.0)):
+				self.on_execute_query_from_disk_activate(None, filename)
+				return
 		try:
 			fp = file(filename, "rb")
 			query_text = fp.read()
@@ -1832,7 +2074,7 @@ class Emma:
 				for name, props in current_table.fields.iteritems():
 					if props[3] != "PRI": continue
 					if primary_key: primary_key += " " + order_dir + ", "
-					primary_key += self.escape_fieldname(name)
+					primary_key += "`%s`" % self.escape_fieldname(name)
 				if primary_key: 
 					replace = primary_key
 					break
@@ -1840,11 +2082,11 @@ class Emma:
 				for name, props in current_table.fields.iteritems():
 					if props[3] != "UNI": continue
 					if key: key +=  " " + order_dir + ", "
-					key += self.escape_fieldname(name)
+					key += "`%s`" % self.escape_fieldname(name)
 				if key: 
 					replace = key
 					break
-				replace = self.escape_fieldname(current_table.field_order[0])
+				replace = "`%s`" % self.escape_fieldname(current_table.field_order[0])
 				break
 			t = t.replace("$primary_key$", replace)
 			
@@ -1992,6 +2234,9 @@ class Emma:
 		else:
 			print "unknown depth", d," for render_connections_pixbuf with object", o
 		
+	def on_new_file_activate(self, *args):
+	    print "new file", args
+
 	def render_connections_text(self, column, cell, model, iter):
 		d = model.iter_depth(iter)
 		o = model.get_value(iter, 0)
@@ -2010,7 +2255,10 @@ class Emma:
 		o = model.get_value(iter, id)
 		if not o is None: 
 			cell.set_property("background", None)
-			cell.set_property("text", o)
+			if len(o) < 256:
+				cell.set_property("text", o)
+			else:
+				cell.set_property("text", o[0:256] + "...")
 		else:
 			cell.set_property("background", self.config["null_color"])
 			cell.set_property("text", "")
@@ -2095,7 +2343,8 @@ class Emma:
 			"copy_record_as_csv_delim": ",",
 			"save_result_as_csv_delim": ",",
 			"save_result_as_csv_line_delim": "\\n",
-			"ping_connection_interval": "300"
+			"ping_connection_interval": "300",
+			"ask_execute_query_from_disk_min_size": "1024000"
 		}
 		first = False
 		try:
@@ -2352,14 +2601,12 @@ def start():
 	global new_instance
 	e = Emma()
 	while 1:
-		print "running", e
 		gtk.main()
 		del e
 		if not new_instance: break
 		e = new_instance
 		new_instance = None
-		print "initializing", e
 		e.__init__()
 
-if __name__ == "__main__": start()
-	
+if __name__ == "__main__":
+	start()
