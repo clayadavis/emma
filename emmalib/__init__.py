@@ -6,6 +6,7 @@ import re
 import gc
 import pickle
 import datetime
+import bz2
 
 import gtk
 from gtk import keysyms
@@ -727,9 +728,9 @@ class Emma:
 			self.on_apply_record_tool_clicked(None)
 			
 	def on_execute_query_from_disk_activate(self, button, filename=None):
-		#~ if not self.current_host:
-			#~ self.show_message("execute query from disk", "no host selected!")
-			#~ return
+		if not self.current_host:
+			self.show_message("execute query from disk", "no host selected!")
+			return
 			
 		d = self.assign_once("execute_query_from_disk", self.xml.get_widget, "execute_query_from_disk")
 		fc = self.assign_once("eqfd_file_chooser", self.xml.get_widget, "eqfd_file_chooser")
@@ -757,7 +758,6 @@ class Emma:
 			r = self.find_query_re
 			rw = self.white_find_query_re
 		except: 
-			print "compule"
 			r = self.find_query_re = re.compile(r"""
 				(?s)
 				(
@@ -777,6 +777,7 @@ class Emma:
 
 		match = r.match(query, start)
 		if not match:
+			print "no query found!" # todo
 			return None, len(query)
 		return (match.start(0), match.end(0))
 		
@@ -788,6 +789,7 @@ class Emma:
 			if start is None:
 				while 1:
 					line = fp.readline()
+					#print "line:", [line]
 					if line == "":
 						if len(current_query) > 0:
 							return (' '.join(current_query), start, count_lines)
@@ -839,11 +841,22 @@ class Emma:
 			return
 		
 		size = sbuf.st_size
+		
 		try:
-			fp = file(filename, "rb")
+			fp = bz2.BZ2File(filename, "r", 1024 * 8)
+			self.last_query_line = fp.readline()
+			self.using_compression = True
 		except:
-			self.show_message("execute query from disk", "error opening query from file %s: %s" % (filename, sys.exc_value))
-			return
+			self.using_compression = False
+			fp = None
+			
+		if fp is None:
+			try:
+				fp = file(filename, "rb")
+				self.last_query_line = fp.readline()
+			except:
+				self.show_message("execute query from disk", "error opening query from file %s: %s" % (filename, sys.exc_value))
+				return
 		d.hide()
 		
 		start_line = self.get_widget("eqfd_start_line").get_value()
@@ -881,7 +894,7 @@ class Emma:
 			pos = offset
 			f = float(pos) / float(size)
 			expired = now - start
-			if expired > 10:
+			if not self.using_compression and expired > 10:
 				sr = float(expired) / float(pos) * float(size - pos)
 				remaining = " (%.0fs remaining)" % sr
 				eta_label.set_text("eta: %-19.19s" % datetime.datetime.fromtimestamp(now + sr))
@@ -890,6 +903,8 @@ class Emma:
 			query_entry.set_text(query[0:512])
 			offset_entry.set_text("%d" % pos)
 			line_entry.set_text("%d" % current_line)
+			if f > 1.0:
+				f = 1.0
 			pb.set_fraction(f)
 			pb_text = "%.2f%%%s" % (f * 100.0, remaining)
 			pb.set_text(pb_text)
@@ -902,7 +917,7 @@ class Emma:
 		while time.time() - start < 0.10:
 			update_ui(True)
 		self.query_from_disk = True
-		line_offset = None
+		line_offset = 0
 		found_db = False
 		while self.query_from_disk:
 			current_line = new_line
@@ -1001,17 +1016,15 @@ class Emma:
 		while start < len(text):
 			query_start = start
 			# search query end
-			end = self.search_query_end(text, start)
-			if not end:
-				thisquery = text[start:]
-				start = len(text);
-			else:
-				thisquery = text[start:end]
-				start += end + 1;
+			query_start, end = self.read_query(text, start)
+			if query_start is None:
+				break;
+			thisquery = text[query_start:end]
+			start = end + 1
 				
 			thisquery.strip(" \r\n\t;")
-			if not thisquery: continue # empty query
-			
+			if not thisquery: 
+				continue # empty query
 			query_count += 1
 			q.label.set_text("executing query %d..." % query_count)
 			q.label.window.process_updates(False)
@@ -1029,14 +1042,30 @@ class Emma:
 			# if stop on error is enabled
 			if not ret:
 				message = "error at: %s" % host.last_error.replace("You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
-				i = q.textview.get_buffer().get_iter_at_offset(query_start)
+				message = "error at: %s" % host.last_error.replace("You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
 				
-				match = re.match("error at: '(.*?)'.*", message)
-				if match:
+				line_pos = 0
+				pos = message.find("at line ")
+				if pos != -1:
+					line_no = int(message[pos + 8:])
+					while 1:
+						line_no -= 1
+						if line_no < 1:
+							break
+						p = thisquery.find("\n", line_pos)
+						if p == -1:
+							break;
+						line_pos = p + 1
+						
+				i = q.textview.get_buffer().get_iter_at_offset(query_start + line_pos)
+				
+				match = re.search("error at: '(.*)'", message, re.DOTALL)
+				if match and match.group(1):
 					# set focus and cursor!
-					pos = text.find(match.group(1), query_start, query_start + len(thisquery))
+					#print "search for ->%s<-" % match.group(1)
+					pos = text.find(match.group(1), query_start + line_pos, query_start + len(thisquery))
 					if not pos == -1:
-						i.set_offset(query_start + pos);
+						i.set_offset(pos);
 				else:
 					match = re.match("Unknown column '(.*?')", message)
 					if match:
@@ -1276,7 +1305,6 @@ class Emma:
 		
 		size = sbuf.st_size
 		max = int(self.config["ask_execute_query_from_disk_min_size"])
-		print "%15d\n%15d" % (size, max)
 		if size > max:
 			if self.confirm("load query", """
 <b>%s</b> is very big (<b>%.2fMB</b>)!
