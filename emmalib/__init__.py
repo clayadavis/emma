@@ -41,6 +41,31 @@ last_update = 0
 
 class Emma:
 	def __init__(self):
+		#~ self.read_query(
+#~ r"""
+#~ select 
+	#~ *, 
+	#~ normal,
+	#~ `fie\`ld;(1)`, 
+	#~ "str\"ing;(1)", 
+	#~ 'str\'ing;(2)', 
+	#~ function("string;3", parameter) 
+#~ from 
+	#~ (
+		#~ (
+			#~ entry, 
+			#~ table2
+		#~ ) 
+	#~ left join 
+		#~ (
+			#~ table3, table4
+		#~ )
+	#~ ) 
+#~ order by 
+	#~ `na;me1`;
+#~ select *, `field1`, "string1", 'string2' from entry order by name2;
+#~ """)
+
 		self.created_once = {}
 		self.glade_file = os.path.join(emma_path, "emma.glade")
 		if not os.access(self.glade_file, os.R_OK):
@@ -702,9 +727,9 @@ class Emma:
 			self.on_apply_record_tool_clicked(None)
 			
 	def on_execute_query_from_disk_activate(self, button, filename=None):
-		if not self.current_host:
-			self.show_message("execute query from disk", "no host selected!")
-			return
+		#~ if not self.current_host:
+			#~ self.show_message("execute query from disk", "no host selected!")
+			#~ return
 			
 		d = self.assign_once("execute_query_from_disk", self.xml.get_widget, "execute_query_from_disk")
 		fc = self.assign_once("eqfd_file_chooser", self.xml.get_widget, "eqfd_file_chooser")
@@ -727,6 +752,34 @@ class Emma:
 	def get_widget(self, name):
 		return self.assign_once("widget_%s" % name, self.xml.get_widget, name)
 
+	def read_query(self, query, start=0):
+		try:	
+			r = self.find_query_re
+			rw = self.white_find_query_re
+		except: 
+			print "compule"
+			r = self.find_query_re = re.compile(r"""
+				(?s)
+				(
+				("(?:[^\\]|\\.)*?")|			# double quoted strings
+				('(?:[^\\]|\\.)*?')|			# single quoted strings
+				(`(?:[^\\]|\\.)*?`)|			# backtick quoted strings
+				(/\*.*?\*/)|					# c-style comments
+				(\#.*$)|						# shell-style comments
+				([^;])							# everything but a semicolon
+				)+
+			""", re.VERBOSE)
+			rw = self.white_find_query_re = re.compile("[ \r\n\t]+")
+	
+		m = rw.match(query, start)
+		if m:
+			start = m.end(0)
+
+		match = r.match(query, start)
+		if not match:
+			return None, len(query)
+		return (match.start(0), match.end(0))
+		
 	def read_one_query(self, fp, start=None, count_lines=0, update_function=None, only_use_queries=False, start_line=1):
 		current_query = []
 		self.read_one_query_started = True
@@ -760,20 +813,14 @@ class Emma:
 			else:
 				lb = fp.tell() - len(self.last_query_line)
 				line = self.last_query_line
-			qstart = start
-			while 1:
-				ident, end = self.read_expression(line, start, False, update_function, lb)
-				if end is not None:
-					end -= start
-				if not ident: break
-				if ident == ";": break
-				start += end
-				
-			if qstart != start:
-				current_query.append(line[qstart:start])
-			if not ident is None:
-				if ident == ";":
-					return (' '.join(current_query), start + end, count_lines)
+			start, end = self.read_query(line, start)
+			next = line[end:end+1]
+			#print "next: '%s'" % next
+			if start is not None:
+				#print "append query", [line[start:end]]
+				current_query.append(line[start:end])
+			if next == ";":
+				return (''.join(current_query), end + 1, count_lines)
 			start = None
 		return (None, None, None)
 		
@@ -881,6 +928,7 @@ class Emma:
 					self.show_message("execute query from disk", "an error occoured. maybe remind the line number and press cancel to close this dialog!")
 					self.query_from_disk = False
 					break;
+				#print "exec", [query]
 		query = ""
 		update_ui(True, fp.tell())
 		fp.close()
