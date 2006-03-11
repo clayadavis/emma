@@ -4785,7 +4785,7 @@ successor of yamysqlfront</property>
     <widget class="GtkTable" id="table6">
       <property name="border_width">4</property>
       <property name="visible">True</property>
-      <property name="n_rows">5</property>
+      <property name="n_rows">6</property>
       <property name="n_columns">4</property>
       <property name="homogeneous">False</property>
       <property name="row_spacing">2</property>
@@ -4826,8 +4826,8 @@ successor of yamysqlfront</property>
 	<packing>
 	  <property name="left_attach">0</property>
 	  <property name="right_attach">4</property>
-	  <property name="top_attach">4</property>
-	  <property name="bottom_attach">5</property>
+	  <property name="top_attach">5</property>
+	  <property name="bottom_attach">6</property>
 	  <property name="x_options">fill</property>
 	  <property name="y_options">fill</property>
 	</packing>
@@ -5002,8 +5002,8 @@ successor of yamysqlfront</property>
 	<packing>
 	  <property name="left_attach">0</property>
 	  <property name="right_attach">2</property>
-	  <property name="top_attach">3</property>
-	  <property name="bottom_attach">4</property>
+	  <property name="top_attach">4</property>
+	  <property name="bottom_attach">5</property>
 	  <property name="x_options">fill</property>
 	  <property name="y_options"></property>
 	</packing>
@@ -5024,8 +5024,8 @@ successor of yamysqlfront</property>
 	<packing>
 	  <property name="left_attach">2</property>
 	  <property name="right_attach">4</property>
-	  <property name="top_attach">3</property>
-	  <property name="bottom_attach">4</property>
+	  <property name="top_attach">4</property>
+	  <property name="bottom_attach">5</property>
 	  <property name="x_options">fill</property>
 	  <property name="y_options"></property>
 	</packing>
@@ -5072,6 +5072,51 @@ successor of yamysqlfront</property>
 	  <property name="right_attach">4</property>
 	  <property name="top_attach">2</property>
 	  <property name="bottom_attach">3</property>
+	  <property name="y_options"></property>
+	</packing>
+      </child>
+
+      <child>
+	<widget class="GtkCheckButton" id="eqfd_exclude">
+	  <property name="visible">True</property>
+	  <property name="can_focus">True</property>
+	  <property name="label" translatable="yes">exclude queries matching:</property>
+	  <property name="use_underline">True</property>
+	  <property name="relief">GTK_RELIEF_NORMAL</property>
+	  <property name="focus_on_click">True</property>
+	  <property name="active">False</property>
+	  <property name="inconsistent">False</property>
+	  <property name="draw_indicator">True</property>
+	  <signal name="toggled" handler="on_eqfd_exclude_toggled" last_modification_time="Sat, 11 Mar 2006 16:58:20 GMT"/>
+	</widget>
+	<packing>
+	  <property name="left_attach">0</property>
+	  <property name="right_attach">2</property>
+	  <property name="top_attach">3</property>
+	  <property name="bottom_attach">4</property>
+	  <property name="x_options">fill</property>
+	  <property name="y_options"></property>
+	</packing>
+      </child>
+
+      <child>
+	<widget class="GtkEntry" id="eqfd_exclude_entry">
+	  <property name="visible">True</property>
+	  <property name="sensitive">False</property>
+	  <property name="can_focus">True</property>
+	  <property name="editable">True</property>
+	  <property name="visibility">True</property>
+	  <property name="max_length">0</property>
+	  <property name="text" translatable="yes"></property>
+	  <property name="has_frame">True</property>
+	  <property name="invisible_char">*</property>
+	  <property name="activates_default">False</property>
+	</widget>
+	<packing>
+	  <property name="left_attach">2</property>
+	  <property name="right_attach">4</property>
+	  <property name="top_attach">3</property>
+	  <property name="bottom_attach">4</property>
 	  <property name="y_options"></property>
 	</packing>
       </child>

@@ -732,7 +732,7 @@ class Emma:
 			self.show_message("execute query from disk", "no host selected!")
 			return
 			
-		d = self.assign_once("execute_query_from_disk", self.xml.get_widget, "execute_query_from_disk")
+		d = self.get_widget("execute_query_from_disk")
 		fc = self.assign_once("eqfd_file_chooser", self.xml.get_widget, "eqfd_file_chooser")
 		if filename:
 			fc.set_filename(filename)
@@ -743,11 +743,15 @@ class Emma:
 		d.show()
 		
 	def on_eqfd_limit_db_toggled(self, button):
-		entry = self.assign_once("eqfd_db_entry", self.xml.get_widget, "eqfd_db_entry")
+		entry = self.get_widget("eqfd_db_entry")
+		entry.set_sensitive(button.get_active())
+		
+	def on_eqfd_exclude_toggled(self, button):
+		entry = self.get_widget("eqfd_exclude_entry")
 		entry.set_sensitive(button.get_active())
 		
 	def on_abort_execute_from_disk_clicked(self, button):
-		d = self.assign_once("execute_query_from_disk", self.xml.get_widget, "execute_query_from_disk")
+		d = self.get_widget("execute_query_from_disk")
 		d.hide()
 		
 	def get_widget(self, name):
@@ -777,7 +781,6 @@ class Emma:
 
 		match = r.match(query, start)
 		if not match:
-			print "no query found!" # todo
 			return None, len(query)
 		return (match.start(0), match.end(0))
 		
@@ -830,6 +833,17 @@ class Emma:
 		host = self.current_host
 		d = self.get_widget("execute_query_from_disk")
 		fc = self.get_widget("eqfd_file_chooser")
+		
+		exclude = self.get_widget("eqfd_exclude").get_active()
+		exclude_regex = self.get_widget("eqfd_exclude_entry").get_text()
+		exclude = exclude and exclude_regex
+		if exclude:
+			try:
+				exclude_regex = re.compile(exclude_regex, re.DOTALL)
+			except:
+				self.show_message("execute query from disk", "error compiling your regular expression: %s" % (sys.exc_value))
+				return
+		
 		filename = fc.get_filename()
 		try:
 			sbuf = os.stat(filename)
@@ -877,10 +891,11 @@ class Emma:
 		stop_on_error = self.get_widget("eqfd_stop_on_error").get_active()
 		limit_dbname = self.get_widget("eqfd_db_entry").get_text()
 		limit_db = self.get_widget("eqfd_limit_db").get_active() and limit_dbname != ""
-		
+
 		if limit_db:
 			limit_re = re.compile("(?is)^use[ \r\n\t]+`?" + re.escape(limit_dbname) + "`?|^create database[^`]+`?" + re.escape(limit_dbname) + "`?")
 			limit_end_re = re.compile("(?is)^use[ \r\n\t]+`?.*`?|^create database")
+		
 		
 		last = 0
 		start = time.time()
@@ -939,10 +954,12 @@ class Emma:
 			
 			update_ui(False, fp.tell())
 			if not limit_db or found_db:
-				if not host.query(query, True, append_to_log) and stop_on_error:
+				if exclude and exclude_regex.match(query):
+					print "skipping query", [query]
+				elif not host.query(query, True, append_to_log) and stop_on_error:
 					self.show_message("execute query from disk", "an error occoured. maybe remind the line number and press cancel to close this dialog!")
 					self.query_from_disk = False
-					break;
+					break
 				#print "exec", [query]
 		query = ""
 		update_ui(True, fp.tell())

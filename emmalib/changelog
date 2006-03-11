@@ -38,6 +38,7 @@ emma (0.2) unstable; urgency=low
   * execute big sql skripts from file
   * better placement of text-cursor on mysql error
   * support for automatic reading bzip2 files on "execute big sql skripts from file"
+  * exclude regex
  -- Florian Schmidt <schmidt_florian@gmx.de>  Sat, 11 Mar 2006 16:03:49 +0100
 
 emma (0.1) unstable; urgency=low
