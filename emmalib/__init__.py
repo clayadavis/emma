@@ -195,11 +195,53 @@ class Emma:
 			)
 		self.init_plugins()
 		
+	def on_reload_plugins_activate(self, *args):
+		self.unload_plugins()
+		self.load_plugins()
+		
+	def init_plugin(self, plugin):
+		try:
+			plugin_init = getattr(plugin, "plugin_init")
+		except:
+			return True
+		plugin_init(self)
+		
+	def unload_plugin(self, plugin):
+		try:
+			plugin_unload = getattr(plugin, "plugin_unload")
+			return plugin_unload()
+		except:
+			return True
+		
+	def load_plugins(self):
+		for path in self.plugin_pathes:
+			for plugin_name in os.listdir(path):
+				plugin_dir = os.path.join(path, plugin_name)
+				if not os.path.isdir(plugin_dir) or plugin_name[0] == ".":
+					continue
+				if plugin_name in self.plugins:
+					#print "reloading plugin", plugin_name, "...",
+					plugin = reload(self.plugins[plugin_name])
+				else:
+					#print "loading plugin", plugin_name, "...",
+					plugin = __import__(plugin_name)
+				self.plugins[plugin_name] = plugin
+				ret = self.init_plugin(plugin)
+				#print "done", ret
+		
+	def unload_plugins(self):
+		""" not really an unload - i just asks the module to cleanup """
+		for plugin_name, plugin in self.plugins.iteritems():
+			#print "unloading plugin", plugin_name, "...",
+			self.unload_plugin(plugin)
+			#print "done"
+		
 	def init_plugins(self):
 		plugins_pathes = [
 			os.path.join(self.config_path, "plugins"),
 			os.path.join(emma_path, "plugins")
 		]
+		self.plugin_pathes = []
 		self.plugins = {}
 		for path in plugins_pathes:
 			if not os.path.isdir(path):
@@ -207,21 +249,9 @@ class Emma:
 				continue
 			if not path in sys.path:
 				sys.path.insert(0, path)
-			for plugin_name in os.listdir(path):
-				plugin_dir = os.path.join(path, plugin_name)
-				if not os.path.isdir(plugin_dir) or plugin_name[0] == ".":
-					continue
-				print "loading plugin", plugin_name, "...",
-				plugin = __import__(plugin_name)
-				try:
-					plugin_init = getattr(plugin, "plugin_init")
-				except:
-					print "error: no 'plugin_init()' method!"
-					continue
-				self.plugins[plugin_name] = plugin_name
-				ret = plugin_init(self)
-				print "done", ret
-				
+			self.plugin_pathes.append(path)
+		self.load_plugins()
+		
 	def __getstate__(self):
 		hosts = []
 		iter = self.connections_model.get_iter_root()
@@ -1872,12 +1902,15 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		#menu.popup(None, None, None, event.button, event.time)
 		menu.popup(None, None, None, 0, event.time) # strange!
 		return True
-	
-	def on_table_popup(self, item):
+
+	def get_current_table(self):
 		path, column = self.connections_tv.get_cursor()
 		iter = self.connections_model.get_iter(path)
+		return path, column, iter, self.connections_model.get_value(iter, 0)
+	
+	def on_table_popup(self, item):
+		path, column, iter, table = self.get_current_table()
 		what = item.name
-		table = self.connections_model.get_value(iter, 0)
 		
 		if what == "refresh_table":
 			table.refresh()
