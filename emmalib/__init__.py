@@ -23,7 +23,7 @@ else:
 	from mysql_host import *
 	from mysql_query_tab import *
 
-version = "0.2"
+version = "0.3"
 new_instance = None
 
 re_src_after_order = "(?:[ \r\n\t](?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$))"

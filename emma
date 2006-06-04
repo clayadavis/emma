@@ -1,9 +1,7 @@
 #!/usr/bin/python2.4
 
 import sys
-
-sys.path.insert(0, "/usr/share/emma")
-
+sys.path.insert(1, "/usr/share/emma")
 import emmalib
 
 emmalib.start()
