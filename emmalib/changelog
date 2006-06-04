@@ -1,6 +1,8 @@
 emma (0.3) unstable; urgency=low
   Sun, 04 Jun 2006 17:47:06 +0200
-  
+  * fixed field escaping at order-change
+  * introduced config directory
+  * first plugin system
  -- Florian Schmidt <schmidt_florian@gmx.de>  
  
 emma (0.2) unstable; urgency=low
@@ -34,7 +36,7 @@ emma (0.2) unstable; urgency=low
   * mysql_ping to connected hosts
   * save workspace
   * load workspace
-  * first easy pickly/unpickle
+  * first easy pickle/unpickle
   Fri, 03 Mar 2006 18:59:23 +0100
   * save result
   Sat, 04 Mar 2006 18:53:21 +0100

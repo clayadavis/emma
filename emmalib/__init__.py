@@ -13,6 +13,9 @@ from gtk import keysyms
 import gobject
 import gtk.gdk
 import gtk.glade
+import pprint
+pp = pprint.PrettyPrinter()
+
 
 if __name__ != "__main__":
 	from emmalib import __file__ as emmalib_file
@@ -26,10 +29,11 @@ else:
 version = "0.3"
 new_instance = None
 
-re_src_after_order = "(?:[ \r\n\t](?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$))"
-re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order + ")"
+re_src_after_order_end = "(?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$)"
+re_src_after_order = "(?:[ \r\n\t]" + re_src_after_order_end + ")"
+re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order_end + ")"
 
-print "os:", os.name
+emmalib_file = os.path.abspath(emmalib_file)
 if os.name in ["win32", "nt"]:
     emma_path = os.path.dirname(emmalib_file)
     emma_path = os.path.dirname(emma_path)
@@ -154,6 +158,8 @@ class Emma:
 		self.current_processlist_host = None
 		self.processlist_timer_running = False
 		
+		self.init_config()
+		
 		if not hasattr(self, "state"):
 			self.hosts = {}
 			self.load_config()
@@ -187,7 +193,35 @@ class Emma:
 				int(self.config["ping_connection_interval"]) * 1000,
 				self.on_connection_ping
 			)
+		self.init_plugins()
 		
+	def init_plugins(self):
+		plugins_pathes = [
+			os.path.join(self.config_path, "plugins"),
+			os.path.join(emma_path, "plugins")
+		]
+		self.plugins = {}
+		for path in plugins_pathes:
+			if not os.path.isdir(path):
+				print "plugins-dir", path, "does not exist"
+				continue
+			if not path in sys.path:
+				sys.path.insert(0, path)
+			for plugin_name in os.listdir(path):
+				plugin_dir = os.path.join(path, plugin_name)
+				if not os.path.isdir(plugin_dir) or plugin_name[0] == ".":
+					continue
+				print "loading plugin", plugin_name, "...",
+				plugin = __import__(plugin_name)
+				try:
+					plugin_init = getattr(plugin, "plugin_init")
+				except:
+					print "error: no 'plugin_init()' method!"
+					continue
+				self.plugins[plugin_name] = plugin_name
+				ret = plugin_init(self)
+				print "done", ret
+				
 	def __getstate__(self):
 		hosts = []
 		iter = self.connections_model.get_iter_root()
@@ -204,6 +238,22 @@ class Emma:
 			iter = self.sql_log_model.iter_next(iter)
 		
 		return {"hosts": hosts, "queries": self.queries, "sql_logs": sql_logs}
+	
+	def init_config(self):
+		for i in ["HOME", "USERPROFILE"]: 
+			filename = os.getenv(i)
+			if filename: break
+		if not filename:
+			filename = "."
+		filename = filename + "/.emma"
+		if os.path.isfile(filename):
+			print "detected emma config file", filename, "converting to directory"
+			temp_dir = filename + "_temp"
+			os.mkdir(temp_dir)
+			os.rename(filename, os.path.join(temp_dir, "emmarc"))
+			os.rename(temp_dir, filename)
+		self.config_path = filename
+		self.config_file = "emmarc"
 		
 	def add_query_tab(self, qt):
 		self.current_query = qt
@@ -322,7 +372,8 @@ class Emma:
 		# get current order by clause
 		match = re.search(r, query)
 		if not match: 
-			print "no order found in", query
+			print "no order found in", [query]
+			print "re:", [re_src_query_order]
 			return current_order
 		before, order, after = match.groups()
 		order.lower()
@@ -555,7 +606,7 @@ class Emma:
 			else:
 				new_order.append([c, o])
 		if col:
-			new_order.append([col, True])
+			new_order.append([self.escape_fieldname(col), True])
 		try:	r = self.query_order_re
 		except: r = self.query_order_re = re.compile(re_src_query_order)
 		match = re.search(r, query)
@@ -575,7 +626,7 @@ class Emma:
 		order = ""
 		for col, o in new_order:
 			if order: order += ",\n\t"
-			order += self.escape_fieldname(col)
+			order += col
 			if not o: order += " desc"
 		if order:
 			new_query = ''.join([before, addition, order, after])
@@ -2367,16 +2418,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		if value == "t": return True
 		return False
 		
-	def get_config_file_name(self):
-		for i in ["HOME", "USERPROFILE"]: 
-			filename = os.getenv(i)
-			if filename: break
-		if not filename:
-			filename = "."
-		return filename + "/.emma"
-		
 	def save_config(self):
-		filename = self.get_config_file_name()
+		filename = os.path.join(self.config_path, self.config_file)
 		try:
 			fp = file(filename, "w")
 		except:
@@ -2398,8 +2441,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			iter = self.connections_model.iter_next(iter)
 		fp.close()
 		
-	def load_config(self, unpickled = False):
-		filename = self.get_config_file_name()
+	def load_config(self, unpickled=False):
+		filename = os.path.join(self.config_path, self.config_file)
 		# todo get_charset(self.config["db_codeset"]);
 		# printf("system charset: '%s'\n", self.config["db_codeset"].c_str());
 		# syntax_highlight_functions: grep -E -e "^[ \\t]+<code class=\"literal[^>]*>[^\(<90-9]+\(" mysql_fun.html fun*.html | sed -r -e "s/^[^<]*<code[^>]+>//" -e "s/\(.*$/,/" | tr "[:upper:]" "[:lower:]" | sort | uniq | xargs echo
