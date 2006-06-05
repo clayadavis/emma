@@ -167,6 +167,7 @@
 		  <property name="fixed_height_mode">False</property>
 		  <property name="hover_selection">False</property>
 		  <property name="hover_expand">False</property>
+		  <signal name="cursor_changed" handler="on_cursor_changed" last_modification_time="Mon, 05 Jun 2006 14:13:09 GMT"/>
 		</widget>
 	      </child>
 	    </widget>
@@ -316,6 +317,7 @@
 			  <property name="active">False</property>
 			  <property name="inconsistent">False</property>
 			  <property name="draw_indicator">True</property>
+			  <signal name="toggled" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:22:03 GMT"/>
 			</widget>
 			<packing>
 			  <property name="left_attach">0</property>
@@ -395,6 +397,7 @@
 			  <property name="has_frame">True</property>
 			  <property name="invisible_char">*</property>
 			  <property name="activates_default">False</property>
+			  <signal name="changed" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:21:24 GMT"/>
 			</widget>
 			<packing>
 			  <property name="left_attach">1</property>
@@ -417,6 +420,7 @@
 			  <property name="has_frame">True</property>
 			  <property name="invisible_char">*</property>
 			  <property name="activates_default">False</property>
+			  <signal name="changed" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:21:51 GMT"/>
 			</widget>
 			<packing>
 			  <property name="left_attach">1</property>
@@ -439,6 +443,7 @@
 			  <property name="has_frame">True</property>
 			  <property name="invisible_char">*</property>
 			  <property name="activates_default">False</property>
+			  <signal name="changed" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:22:24 GMT"/>
 			</widget>
 			<packing>
 			  <property name="left_attach">1</property>
@@ -461,6 +466,7 @@
 			  <property name="has_frame">True</property>
 			  <property name="invisible_char">*</property>
 			  <property name="activates_default">False</property>
+			  <signal name="changed" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:22:15 GMT"/>
 			</widget>
 			<packing>
 			  <property name="left_attach">1</property>
@@ -503,6 +509,7 @@ varchar
 year</property>
 			  <property name="add_tearoffs">False</property>
 			  <property name="focus_on_click">True</property>
+			  <signal name="changed" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:21:37 GMT"/>
 			</widget>
 			<packing>
 			  <property name="left_attach">1</property>
@@ -532,6 +539,7 @@ year</property>
 		      <property name="active">False</property>
 		      <property name="inconsistent">False</property>
 		      <property name="draw_indicator">True</property>
+		      <signal name="toggled" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:22:34 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="padding">0</property>
@@ -551,6 +559,7 @@ year</property>
 		      <property name="active">False</property>
 		      <property name="inconsistent">False</property>
 		      <property name="draw_indicator">True</property>
+		      <signal name="toggled" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 15:20:09 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="padding">0</property>
@@ -570,6 +579,7 @@ year</property>
 		      <property name="active">False</property>
 		      <property name="inconsistent">False</property>
 		      <property name="draw_indicator">True</property>
+		      <signal name="toggled" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 15:20:17 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="padding">0</property>
@@ -589,6 +599,7 @@ year</property>
 		      <property name="active">False</property>
 		      <property name="inconsistent">False</property>
 		      <property name="draw_indicator">True</property>
+		      <signal name="toggled" handler="on_table_field_changed" last_modification_time="Mon, 05 Jun 2006 14:22:58 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="padding">0</property>
