@@ -77,6 +77,7 @@ class Emma:
 			print self.glade_file, "not found!"
 			sys.exit(-1)
 		
+		print "galde source file:", [self.glade_file]
 		self.xml = gtk.glade.XML(self.glade_file)
 		self.mainwindow = self.xml.get_widget("mainwindow")
 		self.mainwindow.connect('destroy', lambda *args: gtk.main_quit())
