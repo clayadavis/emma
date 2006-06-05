@@ -75,6 +75,24 @@ class table_editor:
 		self.treeview.insert_column_with_attributes(-1, "comment", gtk.CellRendererText(), text=2)
 		self.install_popup_item("table_popup", "edit table", self.edit_table)
 		self.ignore_changes = True
+		self.treeview.connect("drag-begin", self.drag_begin)
+		self.treeview.connect("drag-end", self.drag_end)
+		
+	def row_changed(self, model, path, iter):
+		if self.changed_handler:
+			self.model.disconnect(self.changed_handler)
+			self.changed_handler = None
+		l = list(model[path][3])
+		l.append("reordered")
+		model[path][3] = l
+		
+	def drag_begin(self, *args):
+		self.changed_handler = self.model.connect("row_changed", self.row_changed)
+		
+	def drag_end(self, *args):
+		if self.changed_handler:
+			self.model.disconnect(self.changed_handler)
+			self.changed_handler = None
 		
 	def cleanup(self):
 		for item, menu in self.popup_items:
@@ -107,9 +125,39 @@ class table_editor:
 			field = table.fields[name]
 			comment = self.extract_comment(field[5]) # todo
 			self.model.append(row=(field[0], field[1], comment, list(field), field))
+		self.xml.get_widget("table_deletefield").set_sensitive(False)
 		self.xml.get_widget("table_field_properties").set_sensitive(False)
+		self.deleted = set()
 		self.window.show_all()
 	
+	def on_table_addfield_clicked(self, button):
+		unnamed_count = 0
+		while True:
+			field_name = "unnamed_%d" % unnamed_count
+			for row in self.model:
+				if row[0] == field_name:
+					break
+			else:
+				break
+			unnamed_count += 1
+		row = [field_name, "int", "", "", "", ""]
+		iter = self.model.append(row=(row[0], row[1], "", list(row), None))
+		self.treeview.set_cursor(self.model.get_path(iter))
+		self.xml.get_widget("table_field_name").grab_focus()
+		
+	def on_table_columns_row_activated(self, *args):
+		self.xml.get_widget("table_field_name").grab_focus()
+		
+	def on_table_deletefield_clicked(self, button):
+		print "delete field!"
+		path, column = self.treeview.get_cursor()
+		row = self.model[path]
+		if row[4]:
+			self.deleted.add(row[3][0])
+		del self.model[path]
+		self.xml.get_widget("table_deletefield").set_sensitive(False)
+		self.xml.get_widget("table_field_properties").set_sensitive(False)
+		
 	def parse_type(self, string):
 		match = re.search("\(([0-9,]+)\)$", string)
 		if not match:
@@ -163,6 +211,7 @@ class table_editor:
 				print "value", value, "not found in model", model
 		else:
 			print "unknown type", type(widget)
+			
 	def set_current_field(self, field):
 		self.ignore_changes = True
 		set = self.set_field
@@ -194,6 +243,7 @@ class table_editor:
 		path, column = treeview.get_cursor()
 		row = self.model[path]
 		self.set_current_field(row[3])
+		self.xml.get_widget("table_deletefield").set_sensitive(True)
 		
 	def on_table_field_changed(self, widget):
 		if self.ignore_changes:
@@ -257,10 +307,129 @@ class table_editor:
 		self.window.hide()
 		
 	def on_table_apply(self, *args):
-		print args
+		button = args[0]
+		if len(args) > 1:
+			mode = args[1]
+		else:
+			mode = "close"
+		""" render alter table sql """
+		esc = self.table.host.escape
+		query = "alter table `%s` " %  esc(self.table.name)
+		no_changes = query
+		add = ""
+		
+		""" deleted columns """
+		for f in self.deleted:
+			query += "%sdrop column `%s`" % (add, esc(f))
+			add = ",";
+			
+		""" modified or new columns """
+		last_field = None
+		for f in self.model:
+			if tuple(f[3]) == f[4]: # no changes on this field
+				last_field = f[0];
+				continue;
+			#print "this field changed from\n%s to\n%s" % (f[4], f[3])
+			if not f[4] is None: # modified existing field
+				if f[4][0] != f[3][0]: # name changed
+					query += "%schange column `%s` `%s` %s " % (
+						add, 
+						esc(f[4][0]),
+						esc(f[3][0]),
+						f[3][1]
+					)
+				else:
+					query += "%smodify column `%s` %s " % (
+						add, 
+						esc(f[3][0]),
+						f[3][1]
+					)
+			else: # new field
+				query += "%sadd column `%s` %s " % (
+					add, 
+					esc(f[3][0]),
+					f[3][1]
+				)
+			
+			if f[3][2] == "YES": # NULL allowed?
+				query += "null "
+			else:
+				query += "not null "
+			
+			if not f[3][4] is None: # default value?
+				query += "default '%s' " % esc(f[3][4])
+			
+			if f[3][5]: # extra?
+				query += f[3][5] + " ";
+			
+			if last_field is None:
+				query += "FIRST ";
+			else:
+				query += "AFTER `%s` " % esc(last_field)
+			add = ","
+			last_field = f[3][0]
+		
+		# rename table
+		table_changed = False
+		new_name = self.xml.get_widget("table_name").get_text()
+		if new_name != self.table.name:
+			old_name = self.table.name
+			query += "%srename to `%s` " % (add, new_name)
+			add = ","
+			table_changed = True
+		
+		# table comment
+		# todo
+		"""
+		comment = self.xml.get_widget("table_comment").get_text()
+		if comment != self.table["comment"]:
+			query += "%scomment = '%s' " % (add, esc(comment))
+			add = ""
+			table_changed = True
+		"""
+		""" ask user """
+		if query != no_changes:
+			if not self.emma.confirm("edit table", "do you really want to edit the <b>%s</b> table in database <b>%s</b> on <b>%s</b> with this sql:\n<b>%s</b>" % (
+				self.table.name, 
+				self.table.db.name, 
+				self.table.db.host.name,
+				query
+			)):
+				return
+		else:
+			self.window.hide()
+			return
+		
+		""" execute sql """
+		if self.table.db.host.query(query): # success
+			""" close dialog """
+			self.table.create_table = None
+			self.table.refresh()
+			new_tables = self.table.db.refresh()
+			self.emma.redraw_db(self.table.db, self.emma.get_db_iter(self.table.db), new_tables)
+			self.emma.redraw_tables()
+			self.window.hide()
+			return
+		show_message("edit table", "sorry, can't change table - sql error")
+		"""
+		table_editor->hide();
+		
+		if(old_name != new_name) {
+			TreePath p = TreePath(table_iter);
+			p.up();
+			table_iter = connections_model->get_iter(p);
+			mysql_database_entry* db = ((mysql_table_entry*)edit_table->db)->db;
+			
+			db->refresh();
+			update_database(db, table_iter);
+		} else {
+			((mysql_table_entry*)edit_table->db)->refresh();
+			on_connections_cursor_changed();
+		}
+		"""
 	
-	def on_table_apply_and_open(self, *args):
-		print args
+	def on_table_apply_and_open(self, button):
+		self.on_table_apply(button, "key_editor")
 		
 plugin_instance = None	
 def plugin_init(emma_instance):

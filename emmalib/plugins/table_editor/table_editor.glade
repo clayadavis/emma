@@ -168,6 +168,7 @@
 		  <property name="hover_selection">False</property>
 		  <property name="hover_expand">False</property>
 		  <signal name="cursor_changed" handler="on_cursor_changed" last_modification_time="Mon, 05 Jun 2006 14:13:09 GMT"/>
+		  <signal name="row_activated" handler="on_table_columns_row_activated" last_modification_time="Mon, 05 Jun 2006 17:27:45 GMT"/>
 		</widget>
 	      </child>
 	    </widget>
@@ -201,6 +202,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_table_addfield_clicked" last_modification_time="Mon, 05 Jun 2006 17:19:28 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -218,6 +220,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_table_deletefield_clicked" last_modification_time="Mon, 05 Jun 2006 17:19:33 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>

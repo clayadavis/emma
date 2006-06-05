@@ -151,5 +151,7 @@ class mysql_host:
 		self.processlist = (result.describe(), result.fetch_row(0))
 		
 	def escape(self, s):
+		if s is None:
+			return s
 		return self.handle.escape_string(s)
 	

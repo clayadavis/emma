@@ -21,7 +21,7 @@ class mysql_table:
 		#print "table will pickle:", d
 		return d
 		
-	def refresh(self, refresh_props = True):
+	def refresh(self, refresh_props=True):
 		self.db.host.select_database(self.db)
 		
 		if refresh_props:
