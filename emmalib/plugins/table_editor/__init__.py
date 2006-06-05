@@ -380,13 +380,12 @@ class table_editor:
 		
 		# table comment
 		# todo
-		"""
 		comment = self.xml.get_widget("table_comment").get_text()
-		if comment != self.table["comment"]:
+		if comment != self.table["Comment"]:
 			query += "%scomment = '%s' " % (add, esc(comment))
 			add = ""
 			table_changed = True
-		"""
+			
 		""" ask user """
 		if query != no_changes:
 			if not self.emma.confirm("edit table", "do you really want to edit the <b>%s</b> table in database <b>%s</b> on <b>%s</b> with this sql:\n<b>%s</b>" % (

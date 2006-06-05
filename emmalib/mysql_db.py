@@ -37,7 +37,7 @@ class mysql_db:
 		for row in result.fetch_row(0):
 			if not row[0] in old:
 				#print "new table", row[0]
-				self.tables[row[0]] = mysql_table(self, row)
+				self.tables[row[0]] = mysql_table(self, row, result.describe())
 				new_tables.append(row[0])
 			else:
 				#print "known table", row[0]

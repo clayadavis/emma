@@ -1,11 +1,12 @@
 import sys, time
 
 class mysql_table:
-	def __init__(self, db, props):
+	def __init__(self, db, props, props_description):
 		self.handle = db.handle
 		self.host = db.host
 		self.db = db
 		self.props = props
+		self.props_dict = dict(zip(props_description, props))
 		self.name = props[0]
 		self.fields = {}
 		self.field_order = []
@@ -20,6 +21,13 @@ class mysql_table:
 			del d[i]
 		#print "table will pickle:", d
 		return d
+	
+	def __getitem__(self, what):
+		try:
+			return self.props_dict[what]
+		except:
+			pass
+		print "property", what, "not found in table props:", self.props_dict
 		
 	def refresh(self, refresh_props=True):
 		self.db.host.select_database(self.db)
@@ -29,6 +37,7 @@ class mysql_table:
 			result = self.handle.store_result()
 			rows = result.fetch_row(0)
 			self.props = rows[0]
+			self.props_dict = dict(zip(map(lambda v: v[0], result.describe()), rows[0]))
 			self.name = self.props[0]
 		
 		self.host.query("describe `%s`" % self.name)
