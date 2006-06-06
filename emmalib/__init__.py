@@ -35,9 +35,17 @@ re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re
 
 emmalib_file = os.path.abspath(emmalib_file)
 if os.name in ["win32", "nt"]:
-    emma_path = os.path.dirname(emmalib_file)
-    emma_path = os.path.dirname(emma_path)
-    emma_path = os.path.dirname(emma_path)
+	print "Windows detected"
+	emma_path = emmalib_file
+	count = 5
+	dirs_checked = []
+	while not os.access(os.path.join(emma_path, "emma.glade"), os.R_OK):
+		dirs_checked.append(emma_path)
+		emma_path = os.path.dirname(emma_path)
+		count -= 1
+		if not count:
+			print "could not find glade file! checked these dirs:", dirs_checked
+			sys.exit(0)
 else:
     emma_path = os.path.dirname(emmalib_file)
 
