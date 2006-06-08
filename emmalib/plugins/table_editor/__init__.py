@@ -400,7 +400,7 @@ class table_editor:
 			return
 		
 		""" execute sql """
-		if self.table.db.host.query(query): # success
+		if self.table.db.query(query): # success
 			""" close dialog """
 			self.table.create_table = None
 			self.table.refresh()

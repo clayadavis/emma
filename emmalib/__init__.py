@@ -1928,7 +1928,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		elif what == "truncate_table":
 			if not self.confirm("truncate table", "do you really want to truncate the <b>%s</b> table in database <b>%s</b> on <b>%s</b>?" % (table.name, table.db.name, table.db.host.name)):
 				return
-			if table.db.host.query("truncate `%s`" % (table.name)):
+			if table.db.query("truncate `%s`" % (table.name)):
 				table.refresh()
 				self.redraw_table(table, iter)
 				self.update_table_view()
@@ -1936,7 +1936,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			if not self.confirm("drop table", "do you really want to DROP the <b>%s</b> table in database <b>%s</b> on <b>%s</b>?" % (table.name, table.db.name, table.db.host.name)):
 				return
 			db = table.db
-			if db.host.query("drop table `%s`" % (table.name)):
+			if db.query("drop table `%s`" % (table.name)):
 				new_tables = db.refresh()
 				self.redraw_db(db, self.get_db_iter(db), new_tables)
 				self.redraw_tables()
@@ -1961,7 +1961,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		elif what == "new_table":
 			name = self.input("new table", "please enter the name of the new table:")
 			if not name: return
-			if db.host.query("create table `%s` (`%s_id` int primary key auto_increment)" % (name, name)):
+			if db.query("create table `%s` (`%s_id` int primary key auto_increment)" % (name, name)):
 				new_tables = db.refresh()
 				self.redraw_db(db, self.get_db_iter(db), new_tables)
 				self.redraw_tables()

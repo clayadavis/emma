@@ -48,3 +48,7 @@ class mysql_db:
 			print "destroy table", table
 			del self.tables[table]
 		return new_tables
+
+	def query(self, query, check_use=True, append_to_log=True):
+		self.host.select_database(self)
+		return self.host.query(query, check_use, append_to_log)
