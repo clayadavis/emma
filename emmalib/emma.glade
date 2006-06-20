@@ -20,7 +20,6 @@
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
   <signal name="key_release_event" handler="on_mainwindow_key_release_event" last_modification_time="Sat, 25 Feb 2006 11:05:01 GMT"/>
 
   <child>
@@ -44,8 +43,6 @@
 	      <child>
 		<widget class="GtkMenuBar" id="menubar1">
 		  <property name="visible">True</property>
-		  <property name="pack_direction">GTK_PACK_DIRECTION_LTR</property>
-		  <property name="child_pack_direction">GTK_PACK_DIRECTION_LTR</property>
 
 		  <child>
 		    <widget class="GtkMenuItem" id="menuitem1">
@@ -1456,6 +1453,7 @@ select * from user order by user_id desc,
 		  <property name="hover_selection">False</property>
 		  <property name="hover_expand">False</property>
 		  <signal name="button_press_event" handler="on_sql_log_button_press" last_modification_time="Sun, 15 Jan 2006 17:20:55 GMT"/>
+		  <signal name="row_activated" handler="on_sql_log_activate" last_modification_time="Tue, 20 Jun 2006 15:12:35 GMT"/>
 		</widget>
 	      </child>
 	    </widget>
@@ -1622,7 +1620,6 @@ select * from user order by user_id desc,
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkVBox" id="vbox7">
@@ -2012,7 +2009,6 @@ select * from user order by user_id desc,
   <property name="comments" translatable="yes">Extendable Mysql Managing Assistant
 
 successor of yamysqlfront</property>
-  <property name="wrap_license">False</property>
   <property name="authors">Florian Schmidt &lt;schmidt_florian at gmx.de&gt;</property>
   <property name="translator_credits" translatable="yes" comments="TRANSLATORS: Replace this string with your names, one name per line.">translator-credits</property>
 </widget>
@@ -2144,7 +2140,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -2395,7 +2390,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -2988,7 +2982,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -3156,7 +3149,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -3678,7 +3670,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkScrolledWindow" id="scrolledwindow17">
@@ -3750,7 +3741,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkTable" id="table6">
@@ -3842,7 +3832,6 @@ successor of yamysqlfront</property>
 	      <property name="action">GTK_FILE_CHOOSER_ACTION_OPEN</property>
 	      <property name="local_only">True</property>
 	      <property name="show_hidden">False</property>
-	      <property name="do_overwrite_confirmation">False</property>
 	      <property name="width_chars">-1</property>
 	    </widget>
 	    <packing>
@@ -4111,7 +4100,6 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
-  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkTable" id="table7">

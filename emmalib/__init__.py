@@ -1635,7 +1635,22 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			self.show_message("sorry", "there was an error while trying to kill process_id %s!" % process_id)
 	
 	def on_sql_log_activate(self, *args):
-		print args
+		if len(args) == 1:
+			menuitem = args[0]
+			path, column = self.sql_log_tv.get_cursor()
+			row = self.sql_log_model[path]
+			if menuitem.name == "copy_sql_log":
+				self.clipboard.set_text(row[1])
+				self.pri_clipboard.set_text(row[1])
+			elif menuitem.name == "set_as_query_text":
+				self.current_query.textview.get_buffer().set_text(row[1])
+			if menuitem.name == "delete_sql_log":
+				print "TODO"
+			return True
+		tv, path, tvc = args
+		query = tv.get_model()[path][1]
+		self.current_query.textview.get_buffer().set_text(query)
+		return True
 		
 	def on_sql_log_button_press(self, tv, event):
 		if not event.button == 3: return False
