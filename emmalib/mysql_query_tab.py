@@ -14,7 +14,8 @@ class mysql_query_tab:
 			"local_search": "local_search_button",
 			"remove_order": "remove_order",
 			"label": "query_label",
-			"page": "first_query"
+			"page": "first_query",
+			"query_bottom_label": "query_bottom_label",
 		}
 		
 		for attribute, xmlname in renameload.iteritems():
@@ -53,6 +54,13 @@ class mysql_query_tab:
 		self.last_source = text
 		self.textview.get_buffer().set_text(text)
 	
+	def update_bottom_label(self):
+		self.query_bottom_label.set_label("encoding: %s" % self.encoding)
+		
+	def set_query_encoding(self, encoding):
+		self.encoding = encoding
+		self.update_bottom_label()
+		
 	def set_query_font(self, font_name):
 		self.textview.get_pango_context()
 		fd = pango.FontDescription(font_name)

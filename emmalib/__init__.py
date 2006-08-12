@@ -297,6 +297,7 @@ class Emma:
 	def add_query_tab(self, qt):
 		self.current_query = qt
 		self.queries.append(qt)
+		qt.set_query_encoding(self.config["db_encoding"])
 		qt.set_query_font(self.config["query_text_font"])
 		qt.set_result_font(self.config["query_result_font"])
 		if self.config_get_bool("query_text_wrap"):
@@ -438,10 +439,35 @@ class Emma:
 			else:
 				print "unknown order item:", item, "ignoring..."
 				item = None
-			if item: current_order.append(item)
+			if item: current_order.append(tuple(item))
 			if not ident: break
 			start += 1 # comma
 		return current_order
+		
+	def on_remember_order_clicked(self, button):
+		query = self.current_query.last_source
+		current_order = self.get_order_from_query(query)
+		result = self.is_query_appendable(query)
+		if not result:
+			return (None, None, None, None, None)
+		table_list = result.group(7)
+		table_list = table_list.replace(" join ", ",")
+		table_list = re.sub("(?i)(?:order[ \t\r\n]by.*|limit.*|group[ \r\n\t]by.*|order[ \r\n\t]by.*|where.*)", "", table_list)
+		table_list = table_list.replace("`", "")
+		tables = map(lambda s: s.strip(), table_list.split(","))
+		
+		if len(tables) > 1:
+			self.show_message("store table order", "can't store table order of multi-table queries!")
+			return
+		table = tables[0]
+		
+		print "table: %s order: %s" % (table, current_order)
+		config_name = "stored_order_db_%s_table_%s" % (self.current_host.current_db.name, table)
+		self.config[config_name] = str(current_order)
+		if not self.current_host.current_db.name in self.stored_orders:
+			self.stored_orders[self.current_host.current_db.name] = {}
+		self.stored_orders[self.current_host.current_db.name][table] = current_order
+		self.save_config()
 		
 	def get_field_list(self, s):
 		# todo USE IT!
@@ -718,11 +744,68 @@ class Emma:
 		table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 		if new_value == value:
 			return
-		update_query = "update `%s` set `%s`='%s' where %s limit 1" % (table, field, self.current_host.escape(new_value), where)
-		if self.current_host.query(update_query):
+		update_query = u"update `%s` set `%s`='%s' where %s limit 1" % (
+			table, 
+			field, 
+			self.current_host.escape(new_value), 
+			where
+		)
+		if self.current_host.query(update_query, encoding=q.encoding):
+			print "set new value:", [new_value]
 			q.model.set_value(row_iter, col_num, new_value)
 			return True
 		return False
+		
+	def on_blob_wrap_check_clicked(self, button):
+		if button.get_active():
+			self.blob_tv.set_wrap_mode(gtk.WRAP_WORD)
+		else:
+			self.blob_tv.set_wrap_mode(gtk.WRAP_NONE)
+		
+	def on_blob_load_clicked(self, button):
+		d = self.assign_once("load dialog", 
+			gtk.FileChooserDialog, "load blob contents", self.mainwindow, gtk.FILE_CHOOSER_ACTION_OPEN, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+			
+		filename = d.get_filename()
+		try:
+			fp = file(filename, "rb")
+			query_text = fp.read().decode(self.current_query.encoding, "ignore")
+			fp.close()
+		except:
+			self.show_message("load blob contents", "loading blob contents from file %s: %s" % (filename, sys.exc_value))
+			return
+		self.blob_tv.get_buffer().set_text(query_text)
+		
+	def on_blob_save_clicked(self, button):
+		d = self.assign_once("save dialog", 
+			gtk.FileChooserDialog, "save blob contents", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if os.path.exists(filename):
+			if not os.path.isfile(filename):
+				self.show_message("save blob contents", "%s already exists and is not a file!" % filename)
+				return
+			if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
+				return
+		b = self.blob_tv.get_buffer()
+		new_value = b.get_text(b.get_start_iter(), b.get_end_iter()).encode(self.current_query.encoding, "ignore")
+		try:
+			fp = file(filename, "wb")
+			fp.write(new_value)
+			fp.close()
+		except:
+			self.show_message("save blob contents", "error writing query to file %s: %s" % (filename, sys.exc_value))
 		
 	def on_delete_record_tool_clicked(self, button):
 		q = self.current_query
@@ -738,7 +821,7 @@ class Emma:
 				show_message("delete record", "could not delete this record!?")
 				return
 			update_query = "delete from `%s` where %s limit 1" % (table, where)
-			if not self.current_host.query(update_query):
+			if not self.current_host.query(update_query, encoding=q.encoding):
 				return
 		if not q.model.remove(row_iter):
 			row_iter = q.model.get_iter_first()
@@ -777,7 +860,7 @@ class Emma:
 		if query: 
 			table, where, field, value, row_iter = self.get_unique_where(q.last_source)
 			update_query = "insert into `%s` set %s" % (table, query)
-			if not self.current_host.query(update_query):
+			if not self.current_host.query(update_query, encoding=q.encoding):
 				return False
 				
 			# todo: use insert_id() to retrieve the complete inserted record and set correct field values!
@@ -804,6 +887,7 @@ class Emma:
 			col = q.treeview.get_columns().index(column)
 			value = q.model.get_value(iter, col)
 			if value is None:
+				# todo signal null value
 				self.blob_buffer.set_text("")
 			else:
 				self.blob_buffer.set_text(value)
@@ -1102,6 +1186,7 @@ class Emma:
 		q.apply_record.set_sensitive(False)
 		q.local_search.set_sensitive(False)
 		q.remove_order.set_sensitive(False)
+		self.get_widget("save_result").set_sensitive(False)
 		
 		affected_rows = 0
 		last_insert_id = 0
@@ -1133,7 +1218,8 @@ class Emma:
 			if not thisquery: 
 				continue # empty query
 			query_count += 1
-			q.label.set_text("executing query %d..." % query_count)
+			query_hint = re.sub("[\n\r\t ]+", " ", thisquery[:40])
+			q.label.set_text("executing query %d %s..." % (query_count, query_hint))
 			q.label.window.process_updates(False)
 			
 			appendable = False
@@ -1143,7 +1229,7 @@ class Emma:
 				q.editable = self.is_query_editable(thisquery, appendable_result)
 			print "appendable: %s, editable: %s" % (appendable, q.editable)
 			
-			ret = host.query(thisquery)
+			ret = host.query(thisquery, encoding=q.encoding)
 			query_time += host.query_time
 			
 			# if stop on error is enabled
@@ -1274,8 +1360,7 @@ class Emma:
 			start_display = time.time()
 			last_display = start_display
 			for row in result.fetch_row(0):
-				q.model.append(row)
-				
+				q.model.append(map(lambda f: f and f.decode(q.encoding, "replace"), row))
 				cnt += 1;
 				if not cnt % 100 == 0: continue
 					
@@ -1294,6 +1379,7 @@ class Emma:
 			# there was a query with a result
 			result.append("rows: %d" % num_rows)
 			result.append("fields: %d" % field_count)
+			self.get_widget("save_result").set_sensitive(True)
 		if update:
 			# there was a query without a result
 			result.append("affected rows: %d" % affected_rows)
@@ -1305,6 +1391,9 @@ class Emma:
 		result.append(")")
 	
 		q.label.set_text(' '.join(result))
+		self.blob_tv.set_editable(q.editable)
+		self.get_widget("blob_update").set_sensitive(q.editable)
+		self.get_widget("blob_load").set_sensitive(q.editable)
 		# todo update_buttons();	
 		gc.collect()
 		
@@ -1566,6 +1655,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		self.query_notebook.append_page(new_page, label)
 		self.query_notebook.set_current_page(len(self.queries) - 1)
 		self.current_query.textview.grab_focus()
+		xml.signal_autoconnect(self)
 		
 	def on_query_notebook_switch_page(self, nb, pointer, page):
 		self.current_query = self.queries[page]
@@ -1637,6 +1727,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 	def on_sql_log_activate(self, *args):
 		if len(args) == 1:
 			menuitem = args[0]
+			if menuitem.name == "clear_all_entries":
+				self.sql_log_model.clear()
+				
 			path, column = self.sql_log_tv.get_cursor()
 			row = self.sql_log_model[path]
 			if menuitem.name == "copy_sql_log":
@@ -1645,7 +1738,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			elif menuitem.name == "set_as_query_text":
 				self.current_query.textview.get_buffer().set_text(row[1])
 			if menuitem.name == "delete_sql_log":
-				print "TODO"
+				iter = self.sql_log_model.get_iter(path)
+				self.sql_log_model.remove(iter)
 			return True
 		tv, path, tvc = args
 		query = tv.get_model()[path][1]
@@ -2085,6 +2179,35 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				iter = new_iter
 		return None
 		
+	def on_blob_update_clicked(self, button):
+		q = self.current_query
+		path, column = q.treeview.get_cursor()
+		iter = q.model.get_iter(path)
+		
+		b = self.blob_tv.get_buffer()
+		new_value = b.get_text(b.get_start_iter(), b.get_end_iter())
+		
+		col_max = q.model.get_n_columns()
+		for col_num in range(col_max):
+			if column == q.treeview.get_column(col_num):
+				break
+		else:
+			print "column not found!"
+			return
+		crs = column.get_cell_renderers()
+		
+		return self.on_query_change_data(crs[0], path, new_value, col_num)
+		
+	def on_messages_popup(self, item):
+		if item.name == "clear_messages":
+			self.msg_model.clear()
+		
+	def on_msg_tv_button_press_event(self, tv, event):
+		if not event.button == 3: return False
+		res = tv.get_path_at_pos(int(event.x), int(event.y));
+		self.xml.get_widget("messages_popup").popup(None, None, None, event.button, event.time);
+		return True
+		
 	def on_query_popup(self, item):
 		q = self.current_query
 		path, column = q.treeview.get_cursor()
@@ -2134,28 +2257,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				value += col.get_title().replace("__", "_")
 			self.clipboard.set_text(value)
 			self.pri_clipboard.set_text(value)
-		elif item.name == "edit_field_value":
-			col_max = q.model.get_n_columns()
-			for col_num in range(col_max):
-				if column == q.treeview.get_column(col_num):
-					break
-			else:
-				print "column not found!"
-				return
-			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
-			self.field_edit.set_title("edit field %s in table %s where %s" % (field, table, where))
-			b = self.field_edit_content.get_buffer()
-			b.set_text(value)
-			answer = self.field_edit.run()
-			self.field_edit.hide();
-			if answer != gtk.RESPONSE_OK:
-				return
-			new_value = b.get_text(b.get_start_iter(), b.get_end_iter())
-			if new_value == value:
-				return
-			update_query = "update `%s` set `%s`='%s' where %s limit 1" % (table, field, self.current_host.escape(new_value), where)
-			if self.current_host.query(update_query):
-				q.model.set_value(row_iter, col_num, new_value)
 		elif item.name == "set_value_null":
 			col_max = q.model.get_n_columns()
 			for col_num in range(col_max):
@@ -2166,7 +2267,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				return
 			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 			update_query = "update `%s` set `%s`=NULL where %s limit 1" % (table, field, where)
-			if self.current_host.query(update_query):
+			if self.current_host.query(update_query, encoding=q.encoding):
 				q.model.set_value(row_iter, col_num, None)
 		elif item.name == "set_value_now":
 			col_max = q.model.get_n_columns()
@@ -2178,7 +2279,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				return
 			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 			update_query = "update `%s` set `%s`=now() where %s limit 1" % (table, field, where)
-			if not self.current_host.query(update_query):
+			if not self.current_host.query(update_query, encoding=q.encoding):
 				return
 			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
 			result = self.current_host.handle.store_result().fetch_row(0)
@@ -2196,7 +2297,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				return
 			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 			update_query = "update `%s` set `%s`=unix_timestamp(now()) where %s limit 1" % (table, field, where)
-			if not self.current_host.query(update_query):
+			if not self.current_host.query(update_query, encoding=q.encoding):
 				return
 			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
 			result = self.current_host.handle.store_result().fetch_row(0)
@@ -2214,7 +2315,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				return
 			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 			update_query = "update `%s` set `%s`=password('%s') where %s limit 1" % (table, field, self.current_host.escape(value), where)
-			if not self.current_host.query(update_query):
+			if not self.current_host.query(update_query, encoding=q.encoding):
 				return
 			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
 			result = self.current_host.handle.store_result().fetch_row(0)
@@ -2232,7 +2333,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				return
 			table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 			update_query = "update `%s` set `%s`=sha1('%s') where %s limit 1" % (table, field, self.current_host.escape(value), where)
-			if not self.current_host.query(update_query):
+			if not self.current_host.query(update_query, encoding=q.encoding):
 				return
 			self.current_host.query("select `%s` from `%s` where %s limit 1" % (field, table, where))
 			result = self.current_host.handle.store_result().fetch_row(0)
@@ -2366,6 +2467,41 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					self.current_host.escape(self.fc_entry[i].get_text())
 				)
 			t = t.replace("$field_conditions$", conditions)
+			
+			
+		try:
+			new_order = self.stored_orders[self.current_host.current_db.name][current_table.name]
+			print "found stored order", new_order
+			query = t
+			try:	r = self.query_order_re
+			except: r = self.query_order_re = re.compile(re_src_query_order)
+			match = re.search(r, query)
+			if match: 
+				before, order, after = match.groups()
+				order = ""
+				addition = ""
+			else:
+				match = re.search(re_src_after_order, query)
+				if not match:
+					before = query
+					after = ""
+				else:
+					before = query[0:match.start()]
+					after = match.group()
+				addition = "\norder by\n\t"
+			order = ""
+			for col, o in new_order:
+				if order: order += ",\n\t"
+				order += col
+				if not o: order += " desc"
+			if order:
+				new_query = ''.join([before, addition, order, after])
+			else:
+				new_query = re.sub("(?i)order[ \r\n\t]+by[ \r\n\t]+", "", before + after)
+				
+			t = new_query
+		except:
+			pass
 		self.on_execute_query_clicked(None, t)
 		
 	def on_processlist_refresh_timeout(self, button):
@@ -2460,11 +2596,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			cell.set_property("background", None)
 			if len(o) < 256:
 				cell.set_property("text", o)
+				cell.set_property("editable", True)
 			else:
 				cell.set_property("text", o[0:256] + "...")
+				cell.set_property("editable", False)
 		else:
 			cell.set_property("background", self.config["null_color"])
 			cell.set_property("text", "")
+			cell.set_property("editable", True)
 		
 	def config_get_bool(self, name):
 		value = self.config[name].lower()
@@ -2497,6 +2636,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			fp.write("connection_%s=%s\n" % (host.name, host.get_connection_string()))
 			iter = self.connections_model.iter_next(iter)
 		fp.close()
+		
+	def on_reread_config_activate(self, item):
+		self.load_config()
 		
 	def load_config(self, unpickled=False):
 		filename = os.path.join(self.config_path, self.config_file)
@@ -2539,7 +2681,22 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			"save_result_as_csv_delim": ",",
 			"save_result_as_csv_line_delim": "\\n",
 			"ping_connection_interval": "300",
-			"ask_execute_query_from_disk_min_size": "1024000"
+			"ask_execute_query_from_disk_min_size": "1024000",
+			"db_encoding": "latin1",
+			"supported_db_encodings": 
+				"latin1 (iso8859-1, cp819); "
+				"latin2 (iso8859-2); "
+				"iso8859_15 (iso8859-15); "
+				"utf8;"
+				"utf7;"
+				"utf16; "
+				"ascii (646);"
+				"cp437 (IBM437);" 
+				"cp500 (EBCDIC-CP-BE); "
+				"cp850 (IBM850); "
+				"cp1140 (ibm1140); "
+				"cp1252 (windows-1252); "
+				"mac_latin2; mac_roman"
 		}
 		first = False
 		try:
@@ -2551,19 +2708,65 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				if not line: continue
 				if line[0] == '#': continue
 				varval = line.split("=", 1)
-				if len(varval) != 2:
-					print "skipping invalid self.config line %d: '%s'" % (line_no, line)
-					continue
-				self.config[varval[0].strip("\r\n \t")] = varval[1].strip("\r\n \t")
+				name, value = map(lambda a: a.strip("\r\n \t"), varval)
+				value = varval[1].strip("\r\n \t")
+				self.config[name] = value
+				#setattr(self, "cfg_%s" % name, value)
 			fp.close()
 		except:
 			print "got exception:", sys.exc_type, sys.exc_value
 			first = True
 			self.config["connection_localhost"] = "localhost,localhost,root,,"
 
+		# split supported encodings in list
+		self.supported_db_encodings = map(lambda e: e.strip(), self.config["supported_db_encodings"].split(";"))
+		
+		menu = self.xml.get_widget("query_encoding_menu")
+		for child in menu.get_children():
+			menu.remove(child)
+		self.codings = {}
+		for index, coding in enumerate(self.supported_db_encodings):
+			try:
+				c, description = coding.split(" ", 1)
+			except:
+				c = coding
+				description = ""
+			self.codings[c] = (index, description)
+			item = gtk.MenuItem(coding, False)
+			item.connect("activate", self.on_query_encoding_changed, (c, index))
+			menu.append(item)
+			item.show()
+			
+		try:
+			coding = self.config["db_encoding"]
+			index = self.codings[coding][0]
+		except:
+			index = 0
+			coding, description = self.supported_db_encodings[index].split(" ", 1)
+			self.config["db_encoding"] = coding
+		
+		# stored orders
+		self.stored_orders = {}
+		for name in self.config.keys():
+			if not name.startswith("stored_order_db_"):
+				continue
+			words = name.split("_")
+			db = words[3]
+			table = words[5]
+			if not db in self.stored_orders:
+				self.stored_orders[db] = {}
+			self.stored_orders[db][table] = eval(self.config[name])
+			
+		
 		self.first_template = None
 		keys = self.config.keys()
 		keys.sort()
+		toolbar = self.xml.get_widget("query_toolbar")
+		for child in toolbar.get_children():
+			if not child.name.startswith("template_"):
+				continue
+			toolbar.remove(child)
+		template_count = 0
 		for name in keys:
 			value = self.config[name]
 			if not unpickled:
@@ -2586,10 +2789,12 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				if not self.first_template:
 					self.first_template = value
 				p = name.split("_", 1)
+				template_count += 1
 				button = gtk.ToolButton(gtk.STOCK_EXECUTE)
+				button.set_name("template_%d" % template_count)
 				button.set_tooltip(self.tooltips, "%s\n%s" % (p[1], value))
 				button.connect("clicked", self.on_template, value)
-				self.xml.get_widget("query_toolbar").insert(button, -1)
+				toolbar.insert(button, -1)
 				button.show()
 	
 		if not unpickled: return
@@ -2599,6 +2804,12 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			h.set_update_ui(self.redraw_host, iter) # call before init!
 			self.redraw_host(h, iter)
 			self.current_host = h
+		
+	def on_query_bottom_eventbox_button_press_event(self, ebox, event):
+		self.xml.get_widget("query_encoding_menu").popup(None, None, None, event.button, event.time);
+		
+	def on_query_encoding_changed(self, menuitem, data):
+		self.current_query.set_query_encoding(data[0])
 		
 	def add_mysql_host(self, name, hostname, port, user, password, database, isfirst):
 		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database)

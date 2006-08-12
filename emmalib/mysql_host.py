@@ -90,7 +90,7 @@ class mysql_host:
 		self.connected = False
 		if self.update_ui: self.update_ui(self, *self.update_ui_args)
 		
-	def query(self, query, check_use=True, append_to_log=True):
+	def query(self, query, check_use=True, append_to_log=True, encoding=None):
 		if not self.handle:
 			self.msg_log("not connected! can't execute %s, %s, %s" % (query, str(self.handle), str(self)))
 			return
@@ -99,12 +99,17 @@ class mysql_host:
 		try:
 			self.query_time = 0
 			start = time.time()
+			if encoding:
+				query = query.encode(encoding, "ignore")
 			self.handle.query(query)
 			self.query_time = time.time() - start
 		except:
-			print "error code:", sys.exc_value[0]
+			#print "error code:", sys.exc_value[0]
 			self.last_error = sys.exc_value[1]
-			self.msg_log(sys.exc_value[1])
+			s = sys.exc_value[1]
+			#print "error:", [s]
+			s = s.replace("You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near ", "MySQL syntax error at ")
+			self.msg_log(s)
 			if sys.exc_value[0] == 2013:
 				# lost connection
 				self.close()

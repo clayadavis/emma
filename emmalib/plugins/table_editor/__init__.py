@@ -400,6 +400,7 @@ class table_editor:
 			return
 		
 		""" execute sql """
+		print "executing"
 		if self.table.db.query(query): # success
 			""" close dialog """
 			self.table.create_table = None
@@ -409,7 +410,7 @@ class table_editor:
 			self.emma.redraw_tables()
 			self.window.hide()
 			return
-		show_message("edit table", "sorry, can't change table - sql error")
+		self.emma.show_message("edit table", "sorry, can't change table - sql error")
 		"""
 		table_editor->hide();
 		
