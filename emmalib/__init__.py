@@ -97,7 +97,7 @@ class Emma:
 		self.load_icons()
 		
 		# setup sql_log
-		self.sql_log_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+		self.sql_log_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
 		self.sql_log_tv = self.xml.get_widget("sql_log_tv")
 		self.sql_log_tv.set_model(self.sql_log_model)
 		self.sql_log_tv.append_column(gtk.TreeViewColumn("time", gtk.CellRendererText(), text=0))
@@ -286,7 +286,7 @@ class Emma:
 		sql_logs = []
 		iter = self.sql_log_model.get_iter_root()
 		while iter:
-			log = self.sql_log_model.get(iter, 0, 1)
+			log = self.sql_log_model.get(iter, 0, 1, 2)
 			sql_logs.append(log)
 			iter = self.sql_log_model.iter_next(iter)
 		
@@ -1867,16 +1867,16 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			path, column = self.sql_log_tv.get_cursor()
 			row = self.sql_log_model[path]
 			if menuitem.name == "copy_sql_log":
-				self.clipboard.set_text(row[1])
-				self.pri_clipboard.set_text(row[1])
+				self.clipboard.set_text(row[2])
+				self.pri_clipboard.set_text(row[2])
 			elif menuitem.name == "set_as_query_text":
-				self.current_query.textview.get_buffer().set_text(row[1])
+				self.current_query.textview.get_buffer().set_text(row[2])
 			if menuitem.name == "delete_sql_log":
 				iter = self.sql_log_model.get_iter(path)
 				self.sql_log_model.remove(iter)
 			return True
 		tv, path, tvc = args
-		query = tv.get_model()[path][1]
+		query = tv.get_model()[path][2]
 		self.current_query.textview.get_buffer().set_text(query)
 		return True
 		
@@ -2295,16 +2295,29 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		
 	def on_cw_test(self, *args):
 		import _mysql;
-		data = []
+		data = {
+			"connect_timeout": 6
+		}
+		widget_map = {
+			"password": "passwd"
+		}
 		for n in ["host", "user", "password"]:
-			data.append(self.xml.get_widget("cw_%s" % n).get_text())
+			data[widget_map.get(n, n)] = self.xml.get_widget("cw_%s" % n).get_text()
 			
 		try:
-			handle = _mysql.connect(*data)
+			handle = _mysql.connect(**data)
 		except:
-			self.show_message("test connection", "could not connect to host <b>%s</b> with user <b>%s</b> and password <b>%s</b>:\n<i>%s</i>" % (data[0], data[1], data[2], sys.exc_value[1]))
+			self.show_message("test connection", "could not connect to host <b>%s</b> with user <b>%s</b> and password <b>%s</b>:\n<i>%s</i>" % (
+				data["host"], 
+				data["user"], 
+				data["passwd"], 
+				sys.exc_value
+			))
 			return
-		self.show_message("test connection", "successfully connected to host <b>%s</b> with user <b>%s</b>!" % (data[0], data[1]))
+		self.show_message("test connection", "successfully connected to host <b>%s</b> with user <b>%s</b>!" % (
+			data["host"], 
+			data["user"]
+		))
 		handle.close()
 
 	def get_db_iter(self, db):
@@ -2591,6 +2604,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					self.fc_op_combobox[i].append_text(">")
 					self.fc_op_combobox[i].append_text("!=")
 					self.fc_op_combobox[i].append_text("LIKE")
+					self.fc_op_combobox[i].append_text("ISNULL")
+					self.fc_op_combobox[i].append_text("NOT ISNULL")
 					if i:
 						self.fc_logic_combobox.append(gtk.combo_box_new_text())
 						self.fc_logic_combobox[i - 1].append_text("disabled")
@@ -2628,19 +2643,33 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			self.fc_window.hide()
 			if answer != gtk.RESPONSE_OK: return
 			
-			conditions = "`%s` %s '%s'" % (
-				self.fc_combobox[0].get_active_text(),
-				self.fc_op_combobox[0].get_active_text(),
-				self.current_host.escape(self.fc_entry[0].get_text())
+			def field_operator_value(field, op, value):
+				if op == "ISNULL":
+					return "isnull(`%s`)" % field
+				if op == "NOT ISNULL":
+					return "not isnull(`%s`)" % field
+				eval_kw = "eval: "
+				if value.startswith(eval_kw):
+					return "`%s` %s %s" % (field, op, value[len(eval_kw):])
+				return "`%s` %s '%s'" % (field, op, self.current_host.escape(value))
+			
+			conditions = "%s" % (
+				field_operator_value(
+					self.fc_combobox[0].get_active_text(),
+					self.fc_op_combobox[0].get_active_text(),
+					self.fc_entry[0].get_text()
+				)
 			)
 			for i in range(1, self.fc_count):
 				if self.fc_logic_combobox[i - 1].get_active_text() == "disabled" or self.fc_combobox[i].get_active_text() == "" or self.fc_op_combobox[i].get_active_text() == "":
 					continue
-				conditions += " %s `%s` %s '%s'" % (
+				conditions += " %s %s" % (
 					self.fc_logic_combobox[i - 1].get_active_text(),
-					self.fc_combobox[i].get_active_text(),
-					self.fc_op_combobox[i].get_active_text(),
-					self.current_host.escape(self.fc_entry[i].get_text())
+					field_operator_value(
+						self.fc_combobox[i].get_active_text(),
+						self.fc_op_combobox[i].get_active_text(),
+						self.fc_entry[i].get_text()
+					)
 				)
 			t = t.replace("$field_conditions$", conditions)
 			
@@ -3026,6 +3055,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		host.set_update_ui(self.redraw_host, iter)
 	
 	def add_sql_log(self, log):
+		olog = log
 		max_len = int(self.config["query_log_max_entry_length"])
 		if len(log) > max_len:
 			log = log[0:max_len] + "\n/* query with length of %d bytes truncated. */" % len(log);
@@ -3039,7 +3069,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		now = int((now - int(now)) * 100)
 		timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 		if now: timestamp = "%s.%02d" % (timestamp, now)
-		iter = self.sql_log_model.append((timestamp, log))
+		log = log.replace("<", "&lt;")
+		log = log.replace(">", "&gt;")
+		iter = self.sql_log_model.append((timestamp, log, olog))
 		self.sql_log_tv.scroll_to_cell(self.sql_log_model.get_path(iter))
 		#self.xml.get_widget("message_notebook").set_current_page(0)
 		self.process_events()
