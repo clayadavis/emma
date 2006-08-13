@@ -11,7 +11,7 @@ emma (0.4) unstable; urgency=low
   * each tab has its on selected database (show beneath the encoding)
   * automatic query reexecution (until error)
   * new feature: save result as sql script
-  * new field_conditions operators: "isnull" and "not isnull"
+  * new field_conditions operators: "isnull", "not isnull" and "not like"
   * pass unescaped input to query if field_conditions value starts with "eval: " 
   * fixed sql_log when > and < chars appear in query
   * fixed sql_log to retain the complete sql query even if it doesn't display it

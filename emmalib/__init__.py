@@ -2604,6 +2604,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					self.fc_op_combobox[i].append_text(">")
 					self.fc_op_combobox[i].append_text("!=")
 					self.fc_op_combobox[i].append_text("LIKE")
+					self.fc_op_combobox[i].append_text("NOT LIKE")
 					self.fc_op_combobox[i].append_text("ISNULL")
 					self.fc_op_combobox[i].append_text("NOT ISNULL")
 					if i:
