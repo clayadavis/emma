@@ -14,6 +14,7 @@ import gobject
 import gtk.gdk
 import gtk.glade
 import pprint
+import inspect
 pp = pprint.PrettyPrinter()
 
 
@@ -26,8 +27,10 @@ else:
 	from mysql_host import *
 	from mysql_query_tab import *
 
-version = "0.3"
+version = "0.4"
 new_instance = None
+our_module = None
+testfile_name = "test.sql"
 
 re_src_after_order_end = "(?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$)"
 re_src_after_order = "(?:[ \r\n\t]" + re_src_after_order_end + ")"
@@ -203,6 +206,16 @@ class Emma:
 				self.on_connection_ping
 			)
 		self.init_plugins()
+		# load test query
+		if os.path.isfile(testfile_name):
+			try:
+				fp = file(testfile_name, "rb")
+				query_text = fp.read()
+				fp.close()
+				self.current_query.textview.get_buffer().set_text(query_text)
+			except:
+				print "could not load test query:", sys.exc_value
+			
 		
 	def on_reload_plugins_activate(self, *args):
 		self.unload_plugins()
@@ -496,7 +509,7 @@ class Emma:
 			return field
 		return "`%s`" % field.replace("`", r"\`")
 		
-	def get_unique_where(self, query, path = None, col_num = None):
+	def get_unique_where(self, query, path=None, col_num=None, return_fields=False):
 		# call is_query_appendable before!
 		result = self.is_query_appendable(query)
 		if not result:
@@ -633,7 +646,9 @@ class Emma:
 			
 		# get current edited field and value by col_num
 		#print "%s, %s, %s, %s, %s" % (table, where, field, value, row_iter)
-		return (table, where, field, value, row_iter)
+		if return_fields:
+			return table, where, field, value, row_iter, fields
+		return table, where, field, value, row_iter
 		
 	def on_row_expanded(self, tv, iter, path):
 		o = tv.get_model().get_value(iter, 0)
@@ -849,6 +864,11 @@ class Emma:
 		q.append_iter = iter
 		q.apply_record.set_sensitive(True)
 		
+	def on_reload_self_activate(self, item):
+		module = inspect.getmodule(self)
+		print "reload", module
+		reload(module)
+		
 	def on_apply_record_tool_clicked(self, button):
 		q = self.current_query
 		if not q.append_iter:
@@ -856,14 +876,57 @@ class Emma:
 		query = ""
 		for field, value in q.filled_fields.iteritems():
 			if query: query += ", "
-			query += "%s='%s'" % (self.escape_fieldname(field), self.current_host.escape(value))
+			if not value.isdigit():
+				value = "'%s'" % self.current_host.escape(value)
+			query += "%s=%s" % (self.escape_fieldname(field), value)
 		if query: 
-			table, where, field, value, row_iter = self.get_unique_where(q.last_source)
+			table, where, field, value, row_iter, fields = self.get_unique_where(q.last_source, return_fields=True)
 			update_query = "insert into `%s` set %s" % (table, query)
 			if not self.current_host.query(update_query, encoding=q.encoding):
 				return False
 				
-			# todo: use insert_id() to retrieve the complete inserted record and set correct field values!
+			insert_id = self.current_host.insert_id()
+			print "insert id:", insert_id
+			where_fields = map(lambda s: s.strip(), where.split(","))
+			print "where fields:", where_fields
+			print "select fields:", fields
+			print "from", [table, where, field, value, row_iter]
+			if not where_fields:
+				print "no possible key found to retrieve newly created record"
+			else:
+				th = self.current_host.current_db.tables[table]
+				wc = []
+				for field in where_fields:
+					props = th.fields[field]
+					auto_increment = props[5].find("auto_increment") != -1
+					if auto_increment:
+						value = insert_id
+					else:
+						if field in q.filled_fields:
+							# use filled value
+							value = "'%s'" % self.current_host.escape(q.filled_fields[field])
+						else:
+							# use field default value (maybe none)
+							value = props[4]
+							if not value is None:
+								value = "'%s'" % self.current_host.escape(value)
+					wc.append("%s=%s" % (self.escape_fieldname(field), value))
+				where = " and ".join(wc)
+				print "select where:", where
+				if fields == ["*"]:
+					field_selector = "*"
+				else:
+					field_selector = ", ".join(map(self.escape_fieldname, fields))
+				self.current_host.query("select %s from `%s` where %s limit 1" % (field_selector, table, where))
+				result = self.current_host.handle.store_result().fetch_row(0)
+				if len(result) < 1:
+					print "error: can't find modfied row!?"
+				else:
+					row = result[0]
+					for index, value in enumerate(row):
+						if not value is None:
+							value = value.decode(q.encoding)
+						q.model.set_value(q.append_iter, index, value)
 		else:
 			q.model.remove(q.append_iter)
 		q.append_iter = None
@@ -1234,8 +1297,9 @@ class Emma:
 			
 			# if stop on error is enabled
 			if not ret:
+				print [host.last_error]
 				message = "error at: %s" % host.last_error.replace("You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
-				message = "error at: %s" % host.last_error.replace("You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
+				message = "error at: %s" % message.replace("You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
 				
 				line_pos = 0
 				pos = message.find("at line ")

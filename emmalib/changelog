@@ -5,6 +5,8 @@ emma (0.4) unstable; urgency=low
   * fixed tab-signal handling - popup and buttons now work on all tabs
   * reread-config menu option
   * store table order on request
+  Sun, 13 Aug 2006 17:52:25 +0200
+  * improved append to table-function to requery created record
  -- Florian Schmidt <schmidt_florian@gmx.de>  Sat, 12 Aug 2006 19:54:37 +0200
  
 emma (0.3) unstable; urgency=low

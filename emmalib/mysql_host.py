@@ -155,6 +155,9 @@ class mysql_host:
 		result = self.handle.store_result()
 		self.processlist = (result.describe(), result.fetch_row(0))
 		
+	def insert_id(self):
+		return self.handle.insert_id()
+		
 	def escape(self, s):
 		if s is None:
 			return s
