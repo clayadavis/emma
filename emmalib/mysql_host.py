@@ -105,7 +105,10 @@ class mysql_host:
 			self.query_time = time.time() - start
 		except:
 			#print "error code:", sys.exc_value[0]
-			self.last_error = sys.exc_value[1]
+			try:
+				self.last_error = sys.exc_value[1]
+			except:
+				self.last_error = str(sys.exc_value)
 			s = sys.exc_value[1]
 			#print "error:", [s]
 			s = s.replace("You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near ", "MySQL syntax error at ")

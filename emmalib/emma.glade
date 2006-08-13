@@ -849,6 +849,36 @@
 			  </child>
 
 			  <child>
+			    <widget class="GtkToolItem" id="toolitem4">
+			      <property name="visible">True</property>
+			      <property name="visible_horizontal">True</property>
+			      <property name="visible_vertical">True</property>
+			      <property name="is_important">False</property>
+
+			      <child>
+				<widget class="GtkSpinButton" id="reexecution_spin">
+				  <property name="width_request">41</property>
+				  <property name="visible">True</property>
+				  <property name="tooltip" translatable="yes">automatic reexecution</property>
+				  <property name="can_focus">True</property>
+				  <property name="climb_rate">0.5</property>
+				  <property name="digits">1</property>
+				  <property name="numeric">False</property>
+				  <property name="update_policy">GTK_UPDATE_ALWAYS</property>
+				  <property name="snap_to_ticks">False</property>
+				  <property name="wrap">False</property>
+				  <property name="adjustment">0 0 99 0.5 10 10</property>
+				  <signal name="changed" handler="on_reexecution_spin_changed" last_modification_time="Sun, 13 Aug 2006 16:57:33 GMT"/>
+				</widget>
+			      </child>
+			    </widget>
+			    <packing>
+			      <property name="expand">False</property>
+			      <property name="homogeneous">False</property>
+			    </packing>
+			  </child>
+
+			  <child>
 			    <widget class="GtkToolButton" id="save_query">
 			      <property name="visible">True</property>
 			      <property name="tooltip" translatable="yes">save query to file (ctrl-s)</property>

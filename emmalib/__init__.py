@@ -165,6 +165,7 @@ class Emma:
 		
 		self.tooltips = gtk.Tooltips()
 		self.sort_timer_running = False
+		self.execution_timer_running = False
 		self.field_conditions_initialized = False
 		self.current_host = None
 		self.current_processlist_host = None
@@ -748,7 +749,7 @@ class Emma:
 		self.on_execute_query_clicked()
 		return False # done
 
-	def on_query_change_data(self, cellrenderer, path, new_value, col_num):
+	def on_query_change_data(self, cellrenderer, path, new_value, col_num, force_update=False):
 		q = self.current_query
 		row_iter = q.model.get_iter(path)
 		if q.append_iter and q.model.iter_is_valid(q.append_iter) and q.model.get_path(q.append_iter) == q.model.get_path(row_iter):
@@ -757,7 +758,7 @@ class Emma:
 			return
 		
 		table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
-		if new_value == value:
+		if force_update == False and new_value == value:
 			return
 		update_query = u"update `%s` set `%s`='%s' where %s limit 1" % (
 			table, 
@@ -948,6 +949,7 @@ class Emma:
 		if self.blob_view_visible and column:
 			iter = q.model.get_iter(path)
 			col = q.treeview.get_columns().index(column)
+			self.blob_encoding = q.encoding
 			value = q.model.get_value(iter, col)
 			if value is None:
 				# todo signal null value
@@ -1225,7 +1227,15 @@ class Emma:
 		else:
 			text = query
 		
-		host = q.current_host
+		self.current_host = host = q.current_host
+		if not host:
+			self.show_message(
+				"error executing this query!",
+				"could not execute query, because there is no selected host!"
+			)
+			return
+
+		self.current_db = q.current_db
 		if q.current_db:
 			host.select_database(q.current_db)
 		elif host.current_db:
@@ -1234,13 +1244,6 @@ class Emma:
 the author knows no way to deselect this database. do you want to continue?""" % host.current_db.name):
 				return
 			
-		if not host:
-			self.show_message(
-				"error executing this query!",
-				"could not execute query, because there is no selected host!"
-			)
-			return
-
 		update = False
 		select = False
 		q.editable = False
@@ -1464,6 +1467,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
 		self.get_widget("blob_load").set_sensitive(q.editable)
 		# todo update_buttons();	
 		gc.collect()
+		return True
 		
 	def on_save_result_clicked(self, button):
 		if not self.current_query:
@@ -1954,7 +1958,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		if depth == 1: # host
 			self.current_host = host = o
 			if host.connected:
-				current_host = None
+				self.current_host = None
 				host.close()
 			else:
 				host.connect()
@@ -1964,7 +1968,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				nb.set_current_page(1)
 			self.redraw_host(host, iter, True)
 			if self.current_query:
-				self.current_query.set_current_host(host)
+				self.current_query.set_current_host(self.current_host)
 			
 		elif depth == 2: # database
 			self.current_host = o.host
@@ -2266,6 +2270,31 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			else:
 				iter = new_iter
 		return None
+
+	def on_execution_timeout(self, button):
+		value = button.get_value()
+		if value < 0.1:
+			self.execution_timer_running = False
+			return False
+		# todo reexecute
+		print "reexecute"
+		if self.on_execute_query_clicked() != True:
+			# stop on error
+			button.set_value(0)
+			value = 0
+		if value != self.execution_timer_interval:
+			self.execution_timer_running = False
+			self.on_reexecution_spin_changed(button)
+			return False
+		return True
+
+	def on_reexecution_spin_changed(self, button):
+		value = button.get_value()
+		if self.execution_timer_running: return
+		self.execution_timer_running = True
+		self.execution_timer_interval = value
+		gobject.timeout_add(int(value * 1000), self.on_execution_timeout, button)
+		
 		
 	def on_blob_update_clicked(self, button):
 		q = self.current_query
@@ -2283,8 +2312,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			print "column not found!"
 			return
 		crs = column.get_cell_renderers()
-		
-		return self.on_query_change_data(crs[0], path, new_value, col_num)
+		return self.on_query_change_data(crs[0], path, new_value, col_num, force_update=self.blob_encoding != q.encoding)
 		
 	def on_messages_popup(self, item):
 		if item.name == "clear_messages":

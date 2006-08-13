@@ -8,6 +8,7 @@ emma (0.4) unstable; urgency=low
   Sun, 13 Aug 2006 17:52:25 +0200
   * improved append to table-function to requery created record
   * each tab has its on selected database (show beneath the encoding)
+  * automatic query reexecution (until error)
  -- Florian Schmidt <schmidt_florian@gmx.de>  Sat, 12 Aug 2006 19:54:37 +0200
  
 emma (0.3) unstable; urgency=low

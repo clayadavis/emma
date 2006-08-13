@@ -82,7 +82,10 @@ class mysql_query_tab:
 		
 	def set_current_host(self, host):
 		self.current_host = host
-		self.current_db = host.current_db
+		if host:
+			self.current_db = host.current_db
+		else:
+			self.current_db = None
 		self.update_db_label()
 
 	def set_current_db(self, db):
