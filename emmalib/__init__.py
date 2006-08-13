@@ -1554,7 +1554,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
 		output_row = None
 		try:
 			fp = file(filename, "wb")
-			fp.write("insert into %s values (" % table_name)
+			fp.write("insert into %s values" % table_name)
 			row_delim = "\n\t"
 			while iter:
 				row = q.model.get(iter, *indices)
@@ -1569,7 +1569,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
 				fp.write("%s(%s)" % (row_delim, ",".join(output_row)))
 				row_delim = ",\n\t"
 				iter = q.model.iter_next(iter)
-			fp.write("\n);\n")
+			fp.write("\n;\n")
 			fp.close()
 		except:
 			self.show_message(title, "error writing to file %s: %s" % (filename, sys.exc_value))
