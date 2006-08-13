@@ -1224,12 +1224,16 @@ class Emma:
 			text = b.get_text(b.get_start_iter(), b.get_end_iter())
 		else:
 			text = query
-		host = self.current_host
 		
-		if q.db:
-			host = q.db.host
-			host.select_database(q.db)
-	
+		host = q.current_host
+		if q.current_db:
+			host.select_database(q.current_db)
+		elif host.current_db:
+			if not self.confirm("query without selected db",
+"""warning: this query tab has no database selected but the host-connection already has the database '%s' selected.
+the author knows no way to deselect this database. do you want to continue?""" % host.current_db.name):
+				return
+			
 		if not host:
 			self.show_message(
 				"error executing this query!",
@@ -1846,7 +1850,20 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		path, column = tv.get_cursor()
 		nb = self.xml.get_widget("main_notebook")
 		if len(path) == 3 and nb.get_current_page() == 3:
+			print "update table view..."
 			self.update_table_view(path)
+		q = self.current_query
+		if not q:
+			return
+		if len(path) == 1: # host
+			i = self.connections_model.get_iter(path)
+			o = self.connections_model[i][0]
+			q.set_current_host(o)
+		elif len(path) >= 2: # database or below
+			i = self.connections_model.get_iter(path[0:2])
+			o = self.connections_model[i][0]
+			q.set_current_db(o)
+			
 	
 	def on_nb_change_page(self, np, pointer, page):
 		if page == 2:
@@ -1946,12 +1963,17 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				self.refresh_processlist()
 				nb.set_current_page(1)
 			self.redraw_host(host, iter, True)
+			if self.current_query:
+				self.current_query.set_current_host(host)
 			
 		elif depth == 2: # database
 			self.current_host = o.host
 			new_tables = o.refresh()
 			self.redraw_db(o, iter, new_tables, True)
 			self.redraw_tables()
+			o.host.select_database(o)
+			if self.current_query:
+				self.current_query.set_current_db(o)
 			# self.connections_tv.expand_row(path, False)
 			# todo update_query_db()
 			
@@ -1959,6 +1981,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			self.current_host = host = o.db.host
 			host.select_database(o.db)
 			table = o
+			if self.current_query:
+				self.current_query.set_current_db(table.db)
 			if not table.fields or (time.time() - table.last_field_read) > self.config["autorefresh_interval_table"]:
 				table.refresh()
 				self.redraw_table(o, iter)
@@ -2872,6 +2896,39 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 	def on_query_bottom_eventbox_button_press_event(self, ebox, event):
 		self.xml.get_widget("query_encoding_menu").popup(None, None, None, event.button, event.time);
 		
+	def on_query_db_eventbox_button_press_event(self, ebox, event):
+		q = self.current_query
+		host = q.current_host
+		db = q.current_db
+			
+		i = self.connections_model.get_iter_root()
+		while i and self.connections_model.iter_is_valid(i):
+			if self.connections_model[i][0] == host:
+				break
+			i = self.connections_model.iter_next(i)
+		else:
+			print "host not found in connections list!"
+			q.current_host = q.current_db = None
+			q.update_db_label()
+			return
+			
+		if db is None:
+			self.connections_tv.set_cursor(self.connections_model.get_path(i))
+			return
+		k = self.connections_model.iter_children(i)
+		while k and self.connections_model.iter_is_valid(k):
+			if self.connections_model[k][0] == db:
+				break
+			k = self.connections_model.iter_next(k)
+		else:
+			print "database not found in connections list!"
+			q.current_db = None
+			q.update_db_label()
+			self.connections_tv.set_cursor(self.connections_model.get_path(i))
+			return
+		self.connections_tv.set_cursor(self.connections_model.get_path(k))
+		return
+
 	def on_query_encoding_changed(self, menuitem, data):
 		self.current_query.set_query_encoding(data[0])
 		
