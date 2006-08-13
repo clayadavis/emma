@@ -1511,7 +1511,69 @@ the author knows no way to deselect this database. do you want to continue?""" %
 		except:
 			self.show_message("save results", "error writing query to file %s: %s" % (filename, sys.exc_value))
 		
+
+	def on_save_result_sql_clicked(self, button):
+		if not self.current_query:
+			return
+		title = "save results as sql insert script"
+		d = self.assign_once("save results dialog", 
+			gtk.FileChooserDialog, title, self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
+				(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
 		
+		d.set_default_response(gtk.RESPONSE_ACCEPT)
+		answer = d.run()
+		d.hide()
+		if not answer == gtk.RESPONSE_ACCEPT: return
+		filename = d.get_filename()
+		if os.path.exists(filename):
+			if not os.path.isfile(filename):
+				self.show_message(title, "%s already exists and is not a file!" % filename)
+				return
+			if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
+				return
+		q = self.current_query
+		iter = q.model.get_iter_first()
+		indices = range(q.model.get_n_columns())
+		
+		# try to guess target table name from query
+		table_name = ""
+		query = self.current_query.last_source
+		result = self.is_query_appendable(query)
+		if result:
+			table_list = result.group(7)
+			table_list = table_list.replace(" join ", ",")
+			table_list = re.sub("(?i)(?:order[ \t\r\n]by.*|limit.*|group[ \r\n\t]by.*|order[ \r\n\t]by.*|where.*)", "", table_list)
+			table_list = table_list.replace("`", "")
+			tables = map(lambda s: s.strip(), table_list.split(","))
+			table_name = "_".join(tables)
+		table_name = self.input(title, "please enter the name of the target table:", table_name)
+		if table_name is None:
+			return
+		table_name = self.escape_fieldname(table_name)
+		
+		output_row = None
+		try:
+			fp = file(filename, "wb")
+			fp.write("insert into %s values (" % table_name)
+			row_delim = "\n\t"
+			while iter:
+				row = q.model.get(iter, *indices)
+				if not output_row:
+					output_row = range(len(row))
+				for i, field in enumerate(row):
+					if field is None:
+						field = "NULL"
+					elif not field.isdigit():
+						field = "'%s'" % q.current_host.escape(field.encode(q.encoding))
+					output_row[i] = field
+				fp.write("%s(%s)" % (row_delim, ",".join(output_row)))
+				row_delim = ",\n\t"
+				iter = q.model.iter_next(iter)
+			fp.write("\n);\n")
+			fp.close()
+		except:
+			self.show_message(title, "error writing to file %s: %s" % (filename, sys.exc_value))
+
 	def assign_once(self, name, creator, *args):
 		try:
 			return self.created_once[name]
@@ -2276,8 +2338,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		if value < 0.1:
 			self.execution_timer_running = False
 			return False
-		# todo reexecute
-		print "reexecute"
 		if self.on_execute_query_clicked() != True:
 			# stop on error
 			button.set_value(0)

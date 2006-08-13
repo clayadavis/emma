@@ -73,7 +73,7 @@
 			      <signal name="activate" handler="on_reload_plugins_activate" last_modification_time="Sun, 04 Jun 2006 17:10:12 GMT"/>
 
 			      <child internal-child="image">
-				<widget class="GtkImage" id="image353">
+				<widget class="GtkImage" id="image357">
 				  <property name="visible">True</property>
 				  <property name="stock">gtk-refresh</property>
 				  <property name="icon_size">1</property>
@@ -103,7 +103,7 @@
 			      <signal name="activate" handler="on_reload_self_activate" last_modification_time="Sun, 13 Aug 2006 14:55:18 GMT"/>
 
 			      <child internal-child="image">
-				<widget class="GtkImage" id="image354">
+				<widget class="GtkImage" id="image358">
 				  <property name="visible">True</property>
 				  <property name="stock">gtk-refresh</property>
 				  <property name="icon_size">1</property>
@@ -130,7 +130,7 @@
 			      <signal name="activate" handler="on_save_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
 
 			      <child internal-child="image">
-				<widget class="GtkImage" id="image355">
+				<widget class="GtkImage" id="image359">
 				  <property name="visible">True</property>
 				  <property name="stock">gtk-save-as</property>
 				  <property name="icon_size">1</property>
@@ -151,7 +151,7 @@
 			      <signal name="activate" handler="on_restore_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
 
 			      <child internal-child="image">
-				<widget class="GtkImage" id="image356">
+				<widget class="GtkImage" id="image360">
 				  <property name="visible">True</property>
 				  <property name="stock">gtk-open</property>
 				  <property name="icon_size">1</property>
@@ -184,12 +184,6 @@
 		  </child>
 
 		  <child>
-		    <widget class="GtkSeparatorMenuItem" id="separator4">
-		      <property name="visible">True</property>
-		    </widget>
-		  </child>
-
-		  <child>
 		    <widget class="GtkMenuItem" id="menuitem4">
 		      <property name="visible">True</property>
 		      <property name="label" translatable="yes">_Help</property>
@@ -206,7 +200,7 @@
 			      <signal name="activate" handler="on_changelog_activate" last_modification_time="Sat, 12 Nov 2005 23:41:31 GMT"/>
 
 			      <child internal-child="image">
-				<widget class="GtkImage" id="image357">
+				<widget class="GtkImage" id="image361">
 				  <property name="visible">True</property>
 				  <property name="stock">gtk-about</property>
 				  <property name="icon_size">1</property>
@@ -1214,6 +1208,24 @@
 					  <property name="visible_vertical">True</property>
 					  <property name="is_important">False</property>
 					  <signal name="clicked" handler="on_save_result_clicked" last_modification_time="Fri, 03 Mar 2006 17:40:48 GMT"/>
+					</widget>
+					<packing>
+					  <property name="expand">False</property>
+					  <property name="homogeneous">True</property>
+					</packing>
+				      </child>
+
+				      <child>
+					<widget class="GtkToolButton" id="save_result_sql">
+					  <property name="visible">True</property>
+					  <property name="tooltip" translatable="yes">save result as sql insert script</property>
+					  <property name="label" translatable="yes"></property>
+					  <property name="use_underline">True</property>
+					  <property name="stock_id">gtk-save-as</property>
+					  <property name="visible_horizontal">True</property>
+					  <property name="visible_vertical">True</property>
+					  <property name="is_important">False</property>
+					  <signal name="clicked" handler="on_save_result_sql_clicked" last_modification_time="Sun, 13 Aug 2006 17:34:56 GMT"/>
 					</widget>
 					<packing>
 					  <property name="expand">False</property>
