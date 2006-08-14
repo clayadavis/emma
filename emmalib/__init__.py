@@ -236,6 +236,9 @@ class Emma:
 		except:
 			return True
 		
+	def on_tab_close_eventbox_button_press_event(self, eventbox, event):
+		self.on_closequery_button_clicked(None)
+		
 	def load_plugins(self):
 		for path in self.plugin_pathes:
 			for plugin_name in os.listdir(path):
@@ -1782,16 +1785,22 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		
 	def on_newquery_button_clicked(self, button):
 		xml = gtk.glade.XML(self.glade_file, "first_query")
+		tab_label_hbox = gtk.glade.XML(self.glade_file, "tab_label_hbox")
 		new_page = xml.get_widget("first_query")
 		self.add_query_tab(mysql_query_tab(xml, self.query_notebook))
-		label = gtk.Label("query%d" % len(self.queries))
-		label.show()
+		label = tab_label_hbox.get_widget("tab_label_hbox")
+		qtlabel = tab_label_hbox.get_widget("query_tab_label")
+		qtlabel.set_text("query%d" % len(self.queries))
 		self.query_notebook.append_page(new_page, label)
 		self.query_notebook.set_current_page(len(self.queries) - 1)
 		self.current_query.textview.grab_focus()
 		xml.signal_autoconnect(self)
+		tab_label_hbox.signal_autoconnect(self)
 		
 	def on_query_notebook_switch_page(self, nb, pointer, page):
+		if page > len(self.queries):
+			print "warning: cant select page %d of %d pages!" % (page, len(self.queries))
+			return
 		self.current_query = self.queries[page]
 	
 	def on_closequery_button_clicked(self, button):
