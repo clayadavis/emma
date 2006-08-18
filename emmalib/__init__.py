@@ -1251,15 +1251,16 @@ the author knows no way to deselect this database. do you want to continue?""" %
 		select = False
 		q.editable = False
 		# single popup
-		self.xml.get_widget("add_record").set_sensitive(False)
-		self.xml.get_widget("delete_record").set_sensitive(False)
+		q.add_record.set_sensitive(False)
+		q.delete_record.set_sensitive(False)
 		# per query buttons
 		q.add_record.set_sensitive(False)
 		q.delete_record.set_sensitive(False)
 		q.apply_record.set_sensitive(False)
 		q.local_search.set_sensitive(False)
 		q.remove_order.set_sensitive(False)
-		self.get_widget("save_result").set_sensitive(False)
+		q.save_result.set_sensitive(False)
+		q.save_result_sql.set_sensitive(False)
 		
 		affected_rows = 0
 		last_insert_id = 0
@@ -1453,7 +1454,8 @@ the author knows no way to deselect this database. do you want to continue?""" %
 			# there was a query with a result
 			result.append("rows: %d" % num_rows)
 			result.append("fields: %d" % field_count)
-			self.get_widget("save_result").set_sensitive(True)
+			q.save_result.set_sensitive(True)
+			q.save_result_sql.set_sensitive(True)
 		if update:
 			# there was a query without a result
 			result.append("affected rows: %d" % affected_rows)

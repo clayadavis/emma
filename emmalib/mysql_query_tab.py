@@ -8,6 +8,8 @@ class mysql_query_tab:
 		renameload = {
 			"textview": "query_text", 
 			"treeview": "query_view", 
+			"save_result": "save_result",
+			"save_result_sql": "save_result_sql",
 			"add_record": "add_record_tool",
 			"delete_record": "delete_record_tool",
 			"apply_record": "apply_record_tool",
@@ -28,6 +30,7 @@ class mysql_query_tab:
 		self.last_source = None
 		self.result_info = None
 		self.append_iter = None
+		self.save_result_sql.set_sensitive(False)
 		if hasattr(self, "query"):
 			self.textview.get_buffer().set_text(self.query)
 
