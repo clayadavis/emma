@@ -1804,6 +1804,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			print "warning: cant select page %d of %d pages!" % (page, len(self.queries))
 			return
 		self.current_query = self.queries[page]
+		self.on_query_db_eventbox_button_press_event(None, None)
 	
 	def on_closequery_button_clicked(self, button):
 		if len(self.queries) == 1: return
@@ -1813,11 +1814,18 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		gc.collect()
 		
 	def on_rename_query_tab_clicked(self, button):
+		tab_widget = self.query_notebook.get_tab_label(self.current_query.page)
+		labels = filter(lambda w: type(w) == gtk.Label, tab_widget.get_children())
+		if not labels:
+			print "no label found!"
+			return
+		label = labels[0]
 		new_name = self.input("rename tab", "please enter the new name of this tab:",
-			self.query_notebook.get_tab_label_text(self.current_query.page))
+			label.get_text()
+		)
 		if new_name is None:
 		    return
-		self.query_notebook.set_tab_label_text(self.current_query.page, new_name)
+		label.set_text(new_name)
 		
 	def on_processlist_refresh_value_change(self, button):
 		value = button.get_value()
@@ -3055,7 +3063,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			q.update_db_label()
 			self.connections_tv.set_cursor(self.connections_model.get_path(i))
 			return
-		self.connections_tv.set_cursor(self.connections_model.get_path(k))
+		path = self.connections_model.get_path(k)
+		self.connections_tv.set_cursor(path)
+		self.connections_tv.scroll_to_cell(path, column=None, use_align=True, row_align=0.125, col_align=0.0)
 		return
 
 	def on_query_encoding_changed(self, menuitem, data):
