@@ -3049,8 +3049,10 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			q.update_db_label()
 			return
 			
+		host_path = self.connections_model.get_path(i)
+		self.connections_tv.scroll_to_cell(host_path, column=None, use_align=True, row_align=0.0, col_align=0.0)
 		if db is None:
-			self.connections_tv.set_cursor(self.connections_model.get_path(i))
+			self.connections_tv.set_cursor(host_path)
 			return
 		k = self.connections_model.iter_children(i)
 		while k and self.connections_model.iter_is_valid(k):
@@ -3061,11 +3063,11 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			print "database not found in connections list!"
 			q.current_db = None
 			q.update_db_label()
-			self.connections_tv.set_cursor(self.connections_model.get_path(i))
+			self.connections_tv.set_cursor(host_path)
 			return
 		path = self.connections_model.get_path(k)
+		#self.connections_tv.scroll_to_cell(path, column=None, use_align=True, row_align=0.125, col_align=0.0)
 		self.connections_tv.set_cursor(path)
-		self.connections_tv.scroll_to_cell(path, column=None, use_align=True, row_align=0.125, col_align=0.0)
 		return
 
 	def on_query_encoding_changed(self, menuitem, data):
