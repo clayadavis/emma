@@ -1757,12 +1757,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			start = tm.iter_next(start)
 		self.show_message("local regex search", "sorry, no match found!\ntry to search from the beginning or execute a less restrictive query...")
 		
-	def on_pretty_format_clicked(self, button):
-		print __name__
-		
-	def on_compress_format_clicked(self, button):
-		print __name__
-		
 	def on_query_font_clicked(self, button):
 		d = self.assign_once("query text font", gtk.FontSelectionDialog, "select query font")
 		d.set_font_name(self.config["query_text_font"])

@@ -14,8 +14,13 @@ setup(name="emma",
       author_email="fastflo@users.sourceforge.net",
       url="http://emma.sourceforge.net",
       scripts=['emma'],
-      packages=['emmalib'],
-      package_data={'emmalib': ['emma.glade', "changelog", 'icons/*.png']},
+      packages=[
+            'emmalib', 
+            'emmalib.plugins.table_editor'
+      ],
+      package_data={
+            'emmalib': ['emma.glade', "changelog", 'icons/*.png', 'plugins/table_editor/table_editor.glade'],
+      },
       license="GPL",
       long_description="""
 Emma is a graphical toolkit for MySQL database developers and administrators

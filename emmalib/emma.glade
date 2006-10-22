@@ -20,6 +20,7 @@
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
   <signal name="key_release_event" handler="on_mainwindow_key_release_event" last_modification_time="Sat, 25 Feb 2006 11:05:01 GMT"/>
 
   <child>
@@ -43,6 +44,8 @@
 	      <child>
 		<widget class="GtkMenuBar" id="menubar1">
 		  <property name="visible">True</property>
+		  <property name="pack_direction">GTK_PACK_DIRECTION_LTR</property>
+		  <property name="child_pack_direction">GTK_PACK_DIRECTION_LTR</property>
 
 		  <child>
 		    <widget class="GtkMenuItem" id="menuitem1">
@@ -917,42 +920,6 @@
 			    <packing>
 			      <property name="expand">False</property>
 			      <property name="homogeneous">False</property>
-			    </packing>
-			  </child>
-
-			  <child>
-			    <widget class="GtkToolButton" id="pretty_format">
-			      <property name="visible">True</property>
-			      <property name="tooltip" translatable="yes">pretty format query (Ctrl+p)</property>
-			      <property name="label" translatable="yes"></property>
-			      <property name="use_underline">True</property>
-			      <property name="stock_id">gtk-indent</property>
-			      <property name="visible_horizontal">True</property>
-			      <property name="visible_vertical">True</property>
-			      <property name="is_important">False</property>
-			      <signal name="clicked" handler="on_pretty_format_clicked" last_modification_time="Sat, 21 Jan 2006 20:17:49 GMT"/>
-			    </widget>
-			    <packing>
-			      <property name="expand">False</property>
-			      <property name="homogeneous">True</property>
-			    </packing>
-			  </child>
-
-			  <child>
-			    <widget class="GtkToolButton" id="compress_format">
-			      <property name="visible">True</property>
-			      <property name="tooltip" translatable="yes">compress query</property>
-			      <property name="label" translatable="yes"></property>
-			      <property name="use_underline">True</property>
-			      <property name="stock_id">gtk-unindent</property>
-			      <property name="visible_horizontal">True</property>
-			      <property name="visible_vertical">True</property>
-			      <property name="is_important">False</property>
-			      <signal name="clicked" handler="on_compress_format_clicked" last_modification_time="Sat, 21 Jan 2006 20:17:55 GMT"/>
-			    </widget>
-			    <packing>
-			      <property name="expand">False</property>
-			      <property name="homogeneous">True</property>
 			    </packing>
 			  </child>
 
@@ -1929,6 +1896,7 @@
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkVBox" id="vbox7">
@@ -2318,6 +2286,7 @@
   <property name="comments" translatable="yes">Extendable Mysql Managing Assistant
 
 successor of yamysqlfront</property>
+  <property name="wrap_license">False</property>
   <property name="authors">Florian Schmidt &lt;schmidt_florian at gmx.de&gt;</property>
   <property name="translator_credits" translatable="yes" comments="TRANSLATORS: Replace this string with your names, one name per line.">translator-credits</property>
 </widget>
@@ -2449,6 +2418,7 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -2699,6 +2669,7 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -3345,6 +3316,7 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
   <property name="has_separator">True</property>
 
   <child internal-child="vbox">
@@ -3866,6 +3838,7 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkScrolledWindow" id="scrolledwindow17">
@@ -3937,6 +3910,7 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkTable" id="table6">
@@ -4028,6 +4002,7 @@ successor of yamysqlfront</property>
 	      <property name="action">GTK_FILE_CHOOSER_ACTION_OPEN</property>
 	      <property name="local_only">True</property>
 	      <property name="show_hidden">False</property>
+	      <property name="do_overwrite_confirmation">False</property>
 	      <property name="width_chars">-1</property>
 	    </widget>
 	    <packing>
@@ -4296,6 +4271,7 @@ successor of yamysqlfront</property>
   <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
+  <property name="urgency_hint">False</property>
 
   <child>
     <widget class="GtkTable" id="table7">
