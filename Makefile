@@ -8,8 +8,8 @@ deb:
 	ssh root@maggie /root/bin/rescan_packages
 
 sdist:
-	(cat MANIFEST ; find ./emmalib/ -iname "*.py" ; find ./emmalib/ -iname "*png") | sed -s "s,^./,," | sort | uniq > MANIFEST
-	python2.4 setup.py sdist
+	(echo -ne "emma\nsetup.py\nemmalib/changelog\n"; find ./emmalib/ -iname "*.py" ; find ./emmalib/ -iname "*png"; find ./emmalib/ -iname "*.glade") | sed -s "s,^./,," | sort > MANIFEST
+	python2.4 setup.py sdist 
 
 clean:
 	-sudo rm -rf build build-stamp debian/emma debian/*.debhelper

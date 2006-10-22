@@ -9,7 +9,7 @@ emma (0.5) unstable; urgency=low
   * added message window wm hint
   * newly created query get current host assigned
   * fixed bug in query tab closing
- -- Florian Schmidt <flo@fastflo.de>  Sun, 22 Oct 2006 20:45:51 +0200
+ -- Florian Schmidt <flo@fastflo.de>  Sun, 22 Oct 2006 22:56:59 +0200
 
 emma (0.4) unstable; urgency=low
   Sat, 12 Aug 2006 19:54:37 +0200
