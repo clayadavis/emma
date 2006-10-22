@@ -1478,7 +1478,7 @@
 				  <property name="visible">True</property>
 				  <property name="visible_window">True</property>
 				  <property name="above_child">False</property>
-				  <signal name="button_press_event" handler="on_tab_close_eventbox_button_press_event" last_modification_time="Mon, 14 Aug 2006 07:25:29 GMT"/>
+				  <signal name="button_release_event" handler="on_tab_close_eventbox_button_press_event" after="yes" last_modification_time="Sun, 22 Oct 2006 20:17:30 GMT"/>
 
 				  <child>
 				    <widget class="GtkImage" id="image362">

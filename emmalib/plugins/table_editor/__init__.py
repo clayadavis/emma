@@ -1,3 +1,22 @@
+# -*- coding: utf-8 -*-
+# emma
+#
+# Copyright (C) 2006 Florian Schmidt (flo@fastflo.de)
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
 import os
 import sys
 import time
@@ -57,7 +76,7 @@ class table_editor:
 		self.plugin_dir = os.path.dirname(os.path.abspath(__file__))
 		self.glade_file = os.path.join(self.plugin_dir, "table_editor.glade")
 		if not os.access(self.glade_file, os.R_OK):
-			raise ValueError("galde file %s not found!" % self.glade_file)
+			raise ValueError("glade file %s not found!" % self.glade_file)
 		else:
 			print "galde file:", self.glade_file
 		
@@ -388,12 +407,15 @@ class table_editor:
 			
 		""" ask user """
 		if query != no_changes:
-			if not self.emma.confirm("edit table", "do you really want to edit the <b>%s</b> table in database <b>%s</b> on <b>%s</b> with this sql:\n<b>%s</b>" % (
-				self.table.name, 
-				self.table.db.name, 
-				self.table.db.host.name,
-				query
-			)):
+			if not self.emma.confirm(
+				"edit table", 
+				"do you really want to edit the <b>%s</b> table in database <b>%s</b> on <b>%s</b> with this sql:\n<b>%s</b>" % (
+					self.table.name, 
+					self.table.db.name, 
+					self.table.db.host.name,
+					query
+					),
+				window=self.window):
 				return
 		else:
 			self.window.hide()

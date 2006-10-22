@@ -1,3 +1,22 @@
+# -*- coding: utf-8 -*-
+# emma
+#
+# Copyright (C) 2006 Florian Schmidt (flo@fastflo.de)
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
 import os
 import sys
 import time
@@ -43,60 +62,105 @@ def search_string_end(text, delim, p):
 		s = s + l
 	return s + l
 
+def search_parenthesis_end(text, s):
+	# search closing ) jumping over quoted strings
+	opens = 1
+	s += 1
+	while True:
+		#print "search closing: %r" % text[s:]
+		el = strcspn(text, "()\"'", s)
+		end = s + el
+		print "ptoken: %r" % text[end]
+		if text[end] == "(":
+			opens += 1
+			#print "now open:", opens
+			s = end + 1
+			continue
+		if text[end] == ")":
+			opens -= 1
+			#print "now open:", opens
+			s = end + 1
+			if opens == 0:
+				break
+			continue
+		# must be a string
+		delim = text[end]
+		strend = search_string_end(text, delim, end + 1)
+		quoted_string = text[end:strend + 1]
+		#print "quoted string: %r" % quoted_string
+		s = strend + 1
+	return s
 
 def get_token(text, p, allow_functions=False):
-	print "search from 1 %r" % text[p:]
+	ttype = "token"
 	o = strspn(text, " \r\n\t", p)
 	p = p + o
-	print "search from 2 %r" % text[p:]
+	print "\nget token from %r" % text[p:p + 25]
 	if not text[p:]:
-		return "", len(text)
+		return ttype, "", len(text)
 
 	if text[p] in "\"'":
 		delim = text[p]
 		end = search_string_end(text, delim, p + 1)
 		quoted_string = text[p:end + 1]
 		#print "quoted string: %r" % quoted_string
-		return quoted_string, end + 1
+		ttype = "quoted string"
+		return ttype, quoted_string, end + 1
 
 	l = strcspn(text, " \r\n\t(,;=", p)
 	s = p + l
 	if s >= len(text):
-		return text[p:], len(text)
-	print "found first whitespace: %r" % text[s]
+		print "********last token? : %r" % text[p:] # todo?
+		return ttype, text[p:], len(text)
+
+	print "found first    %r" % text[s]
 	if text[s] == "(":
-		# search closing ) jumping over quoted strings
-		opens = 1
-		s += 1
-		while True:
-			#print "search closing: %r" % text[s:]
-			el = strcspn(text, "()\"'", s)
-			end = s + el
-			print "ptoken: %r" % text[end]
-			if text[end] == "(":
-				opens += 1
-				#print "now open:", opens
-				s = end + 1
-				continue
-			if text[end] == ")":
-				opens -= 1
-				#print "now open:", opens
-				s = end + 1
-				if opens == 0:
-					break
-				continue
-			# must be a string
-			delim = text[end]
-			strend = search_string_end(text, delim, end + 1)
-			quoted_string = text[end:strend + 1]
-			#print "quoted string: %r" % quoted_string
-			s = strend + 1
+		s = search_parenthesis_end(text, s)
+		if l == 0:
+			ttype = "parenthesis block"
+		else:
+			ttype = "function call"
 		l = s - p
 	elif text[s] in "=,;" and l == 0:
 		l = 1
+	else:
+		pp = p + l
+		wl = strspn(text, " \r\n\t", pp)
+		pp += wl
+		print "first char after: %r" % text[pp]
+		if text[pp] == "(":
+			# found function call
+			# read function arguments to this token
+			s = search_parenthesis_end(text, pp)
+			l = s - p
+			ttype = "function call"
+		
 	token = text[p:p + l]
-	return token, p + l
+	return ttype, token, p + l
 
+def pretty_print_function_call(function, compressed=False):
+	l = strcspn(function, "(\n\r\t ")
+	function_name = function[:l]
+	ll = strspn(function, "\n\r\t ", l)
+	function_args = function[l + ll + 1:-1]
+	print "function name: %r args: %r" % (function_name, function_args)
+	out = function_name + "("
+	p = 0
+	tl = len(function_args)
+	while p < tl:
+		tt, token, e = get_token(function_args, p)
+		if not token:
+			break
+		print "fcn pf: token: %r type: %s" % (token, tt)
+		if tt == "function call":
+			# uniform pretty print a function call
+			token = pretty_print_function_call(token)
+		if not compressed and token == ",":
+			out += token + " "
+		else:
+			out += token
+		p = e
+	return out + ")"
 
 
 class pretty_format:
@@ -108,12 +172,15 @@ class pretty_format:
 		self.install_toolbar_item("query_toolbar", gtk.STOCK_INDENT, "pretty format query", self.on_pretty_format)
 		self.install_toolbar_item("query_toolbar", gtk.STOCK_UNINDENT, "compress query", self.on_compress)
 		q = self.emma.current_query
-		self.set_query_text(q, """
-       \n      \t# comment before\n\n/* also before... */\n   \tselect date_format(\nnow(  \n"lalala"  )   \n), ("%Y,((%m"), \', from ),here\', * from record_job 
-where arsch
+		if sys.stdout.debug:
+			# check if we are running with debug output - enable example text
+			print "\n\n\n"
+			self.set_query_text(q, """# this is the pretty format test query. click the "pretty format" or "compress query" button in the query-toolbar.
+       \n      \t# comment before\n\n/* also before... */\n   \tselect date_format \n\t (\nnow(  \n"lalala"  ) , "%Y-%m-%d"  \n), ("%Y,((%m"), \', from ),here\', * from record_job 
+where some_field
 = 
-"am berg so wo'da"
-order by record_job_id desc,
+"a very interesting 'text'"
+order by job_id desc,
 \tvalid_from,\n\t\t\n\tmode,\n\tquery,\n\tpriority desc limit 150;
 select * from user;
 """)
@@ -168,12 +235,14 @@ select * from user;
 		tl = len(text)
 		token = None
 		while p < tl:
-			print "current: %r" % output.getvalue()
-			token, e = get_token(text, p)
+			tt, token, e = get_token(text, p)
 			if not token:
 				break
-			print "token:", (token, e)
-			print current_statement, current_state
+			print "got token      %-60.60r of type %r at %s %s" % (token, tt, current_statement, current_state)
+
+			if tt == "function call":
+				# uniform pretty print a function call
+				token = pretty_print_function_call(token)
 
 			if token.startswith("#"):
 				# comment line. skipping to eol
@@ -325,10 +394,14 @@ select * from user;
 		token = None
 		last_token = token
 		while p < tl:
-			token, e = get_token(text, p)
+			tt, token, e = get_token(text, p)
 			if not token:
 				break
-			print "token:", (token, last_token, e)
+			print "token     : %r last_token: %r" % (token, last_token)
+
+			if tt == "function call":
+				# uniform pretty print a function call
+				token = pretty_print_function_call(token, compressed=True)
 
 			if token.startswith("#"):
 				# comment line. skipping to eol

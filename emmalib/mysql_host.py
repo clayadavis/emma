@@ -1,8 +1,28 @@
+# -*- coding: utf-8 -*-
+# emma
+#
+# Copyright (C) 2006 Florian Schmidt (flo@fastflo.de)
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
 import sys
 import _mysql
 import _mysql_exceptions
 import time
 import re
+import traceback
 from mysql_db import *
 
 class mysql_host:
@@ -23,7 +43,7 @@ class mysql_host:
 					db.__init__(self)
 				self._use_db(db_name, True)
 		else:
-			self.sql_log, self.msg_log, self.name, self.host, self.port, self.user, self.password, self.database = args
+			self.sql_log, self.msg_log, self.name, self.host, self.port, self.user, self.password, self.database, self.connect_timeout = args
 			self.connected = False
 			self.databases = {} # name -> db_object
 			self.current_db = None
@@ -54,21 +74,25 @@ class mysql_host:
 		self.update_ui_args = args
 	
 	def connect(self):
-		if self.port == "":
-			port = 3306
-		else:
-			port = int(self.port)
-		if self.database == "":
-			db = "test"
-		else:
-			db = self.database
+		c = {
+			"host": self.host, 
+			"user": self.user, 
+			"passwd": self.password, 
+			"connect_timeout": int(self.connect_timeout)
+			}
+		if self.port:
+			c["port"] = int(self.port)
+		if self.database:
+			c["db"] = self.database
+
 		try:
-			self.handle = _mysql.connect(self.host, self.user, self.password, db=db, port=port, connect_timeout=7)
+			self.handle = _mysql.connect(**c)
 		except _mysql_exceptions.OperationalError:
 			self.connected = False
 			self.msg_log("%s: %s" % (sys.exc_type, sys.exc_value[1]))
 			return
 		self.connected = True
+		self.refresh()
 		if self.database: self._use_db(self.database)
 		
 	def ping(self):
@@ -134,7 +158,7 @@ class mysql_host:
 		try:
 			self.current_db = self.databases[name]
 		except KeyError:
-			print "Warning: used an unknown database %s! please refresh host!" % name
+			print "Warning: used an unknown database %r! please refresh host!\n%s" % (name, "".join(traceback.format_stack()))
 		
 	def select_database(self, db):
 		self._use_db(db.name)

@@ -1,3 +1,22 @@
+# -*- coding: utf-8 -*-
+# emma
+#
+# Copyright (C) 2006 Florian Schmidt (flo@fastflo.de)
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
 import sys
 import os
 from stat import *
@@ -8,15 +27,18 @@ import pickle
 import datetime
 import bz2
 
-import gtk
-from gtk import keysyms
-import gobject
-import gtk.gdk
-import gtk.glade
+try:
+	import gtk
+	from gtk import keysyms
+	import gobject
+	import gtk.gdk
+	import gtk.glade
+except:
+	print "no gtk. you will not be able to start emma."
+
 import pprint
 import inspect
 pp = pprint.PrettyPrinter()
-
 
 if __name__ != "__main__":
 	from emmalib import __file__ as emmalib_file
@@ -27,10 +49,9 @@ else:
 	from mysql_host import *
 	from mysql_query_tab import *
 
-version = "0.4"
+version = "0.5"
 new_instance = None
 our_module = None
-testfile_name = "test.sql"
 
 re_src_after_order_end = "(?:limit.*|procedure.*|for update.*|lock in share mode.*|[ \r\n\t]*$)"
 re_src_after_order = "(?:[ \r\n\t]" + re_src_after_order_end + ")"
@@ -57,32 +78,8 @@ last_update = 0
 
 class Emma:
 	def __init__(self):
-		#~ self.read_query(
-#~ r"""
-#~ select 
-	#~ *, 
-	#~ normal,
-	#~ `fie\`ld;(1)`, 
-	#~ "str\"ing;(1)", 
-	#~ 'str\'ing;(2)', 
-	#~ function("string;3", parameter) 
-#~ from 
-	#~ (
-		#~ (
-			#~ entry, 
-			#~ table2
-		#~ ) 
-	#~ left join 
-		#~ (
-			#~ table3, table4
-		#~ )
-	#~ ) 
-#~ order by 
-	#~ `na;me1`;
-#~ select *, `field1`, "string1", 'string2' from entry order by name2;
-#~ """)
-
 		self.created_once = {}
+		self.query_count = 0
 		self.glade_file = os.path.join(emma_path, "emma.glade")
 		if not os.access(self.glade_file, os.R_OK):
 			print self.glade_file, "not found!"
@@ -207,16 +204,6 @@ class Emma:
 				self.on_connection_ping
 			)
 		self.init_plugins()
-		# load test query
-		if os.path.isfile(testfile_name):
-			try:
-				fp = file(testfile_name, "rb")
-				query_text = fp.read()
-				fp.close()
-				self.current_query.textview.get_buffer().set_text(query_text)
-			except:
-				print "could not load test query:", sys.exc_value
-			
 		
 	def on_reload_plugins_activate(self, *args):
 		self.unload_plugins()
@@ -312,6 +299,7 @@ class Emma:
 		self.config_file = "emmarc"
 		
 	def add_query_tab(self, qt):
+		self.query_count += 1
 		self.current_query = qt
 		self.queries.append(qt)
 		qt.set_query_encoding(self.config["db_encoding"])
@@ -321,6 +309,7 @@ class Emma:
 			qt.set_wrap_mode(gtk.WRAP_WORD)
 		else:
 			qt.set_wrap_mode(gtk.WRAP_NONE)
+		qt.set_current_host(self.current_host)
 
 	def del_query_tab(self, qt):
 		if self.current_query == qt:
@@ -1786,7 +1775,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		self.add_query_tab(mysql_query_tab(xml, self.query_notebook))
 		label = tab_label_hbox.get_widget("tab_label_hbox")
 		qtlabel = tab_label_hbox.get_widget("query_tab_label")
-		qtlabel.set_text("query%d" % len(self.queries))
+		qtlabel.set_text("query%d" % self.query_count)
 		self.query_notebook.append_page(new_page, label)
 		self.query_notebook.set_current_page(len(self.queries) - 1)
 		self.current_query.textview.grab_focus()
@@ -1794,9 +1783,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		tab_label_hbox.signal_autoconnect(self)
 		
 	def on_query_notebook_switch_page(self, nb, pointer, page):
-		if page > len(self.queries):
-			print "warning: cant select page %d of %d pages!" % (page, len(self.queries))
-			return
+		if page >= len(self.queries):
+			page = len(self.queries) - 1
 		self.current_query = self.queries[page]
 		self.on_query_db_eventbox_button_press_event(None, None)
 	
@@ -1840,7 +1828,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			if i: self.fc_logic_combobox[i - 1].set_active(0)
 	
 	def on_quit_activate(self, item):
-		print self, "quit"
 		gtk.main_quit()
 		
 	def on_about_activate(self, item):
@@ -2038,7 +2025,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			else:
 				host.connect()
 				if not host.connected: return
-				host.refresh()
 				self.refresh_processlist()
 				nb.set_current_page(1)
 			self.redraw_host(host, iter, True)
@@ -2303,8 +2289,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		else:
 			for n in self.cw_props:
 				self.cw_host.__dict__[n] = self.xml.get_widget("cw_%s" % n).get_text()
-		self.save_config()
 		self.connection_window.hide()
+		self.save_config()
 		
 	def on_cw_test(self, *args):
 		import _mysql;
@@ -2320,17 +2306,24 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		try:
 			handle = _mysql.connect(**data)
 		except:
-			self.show_message("test connection", "could not connect to host <b>%s</b> with user <b>%s</b> and password <b>%s</b>:\n<i>%s</i>" % (
-				data["host"], 
-				data["user"], 
-				data["passwd"], 
-				sys.exc_value
-			))
+			self.show_message(
+				"test connection", 
+				"could not connect to host <b>%s</b> with user <b>%s</b> and password <b>%s</b>:\n<i>%s</i>" % (
+					data["host"], 
+					data["user"], 
+					data["passwd"], 
+					sys.exc_value
+					),
+				window=self.connection_window
+				)
 			return
-		self.show_message("test connection", "successfully connected to host <b>%s</b> with user <b>%s</b>!" % (
-			data["host"], 
-			data["user"]
-		))
+		self.show_message(
+			"test connection", 
+			"successfully connected to host <b>%s</b> with user <b>%s</b>!" % (
+				data["host"], 
+				data["user"]
+				),
+			window=self.connection_window)
 		handle.close()
 
 	def get_db_iter(self, db):
@@ -2741,23 +2734,29 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		if not res: return False
 		self.xml.get_widget("processlist_popup").popup(None, None, None, event.button, event.time)
 		
-	def show_message(self, title, message):
-		dialog = gtk.MessageDialog(self.mainwindow, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, message)
+	def show_message(self, title, message, window=None):
+		if window is None:
+			window = self.mainwindow
+		dialog = gtk.MessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, message)
 		dialog.label.set_property("use-markup", True)
 		dialog.set_title(title)
 		dialog.run()
 		dialog.hide()
 		
-	def confirm(self, title, message):
-		dialog = gtk.MessageDialog(self.mainwindow, gtk.DIALOG_MODAL, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, message)
+	def confirm(self, title, message, window=None):
+		if window is None:
+			window = self.mainwindow
+		dialog = gtk.MessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, message)
 		dialog.label.set_property("use-markup", True)
 		dialog.set_title(title)
 		answer = dialog.run()
 		dialog.hide()
 		return answer == gtk.RESPONSE_YES
 		
-	def input(self, title, message, default = ""):
-		dialog = gtk.Dialog(title, self.mainwindow, gtk.DIALOG_MODAL, 
+	def input(self, title, message, default="", window=None):
+		if window is None:
+			window = self.mainwindow
+		dialog = gtk.Dialog(title, window, gtk.DIALOG_MODAL, 
 			(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT,
 			 gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT))
 		label = gtk.Label(message)
@@ -2834,6 +2833,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		return False
 		
 	def save_config(self):
+		if not os.path.exists(self.config_path):
+			print "try to create config path %r" % self.config_path
+			try:
+				os.mkdir(self.config_path)
+			except:
+				self.show_message("save config file", "could create config directory %r: %s" % (self.config_path, sys.exc_value))
+				return
+			
 		filename = os.path.join(self.config_path, self.config_file)
 		try:
 			fp = file(filename, "w")
@@ -2901,6 +2908,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			"save_result_as_csv_line_delim": "\\n",
 			"ping_connection_interval": "300",
 			"ask_execute_query_from_disk_min_size": "1024000",
+			"connect_timeout": "7",
 			"db_encoding": "latin1",
 			"supported_db_encodings": 
 				"latin1 (iso8859-1, cp819); "
@@ -2918,24 +2926,27 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				"mac_latin2; mac_roman"
 		}
 		first = False
-		try:
-			fp = file(filename, "r")
-			line_no = 0
-			for line in fp:
-				line_no += 1
-				line.lstrip(" \t\r\n")
-				if not line: continue
-				if line[0] == '#': continue
-				varval = line.split("=", 1)
-				name, value = map(lambda a: a.strip("\r\n \t"), varval)
-				value = varval[1].strip("\r\n \t")
-				self.config[name] = value
-				#setattr(self, "cfg_%s" % name, value)
-			fp.close()
-		except:
-			print "got exception:", sys.exc_type, sys.exc_value
-			first = True
-			self.config["connection_localhost"] = "localhost,localhost,root,,"
+		if not os.path.exists(filename):
+			print "no config file %r found. using defaults." % filename
+			self.config["connection_localhost"] = "localhost,root,,"
+		else:
+			try:
+				fp = file(filename, "r")
+				line_no = 0
+				for line in fp:
+					line_no += 1
+					line.lstrip(" \t\r\n")
+					if not line: continue
+					if line[0] == '#': continue
+					varval = line.split("=", 1)
+					name, value = map(lambda a: a.strip("\r\n \t"), varval)
+					value = varval[1].strip("\r\n \t")
+					self.config[name] = value
+					#setattr(self, "cfg_%s" % name, value)
+				fp.close()
+			except:
+				print "could not load config file %r: %s" % (filename, sys.exc_value)
+				self.config["connection_localhost"] = "localhost,root,,"
 
 		# split supported encodings in list
 		self.supported_db_encodings = map(lambda e: e.strip(), self.config["supported_db_encodings"].split(";"))
@@ -2997,7 +3008,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					if len(p) == 2:
 						port = p[1]
 						v[0] = p[0]
-					self.add_mysql_host(name[len(prefix):], v[0], port, v[1], v[2], v[3], first)
+					self.add_mysql_host(name[len(prefix):], v[0], port, v[1], v[2], v[3])
 			
 			prefix = "template";
 			if name.startswith(prefix):
@@ -3067,8 +3078,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 	def on_query_encoding_changed(self, menuitem, data):
 		self.current_query.set_query_encoding(data[0])
 		
-	def add_mysql_host(self, name, hostname, port, user, password, database, isfirst):
-		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database)
+	def add_mysql_host(self, name, hostname, port, user, password, database):
+		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database, self.config["connect_timeout"])
 		iter = self.connections_model.append(None, [host])
 		host.set_update_ui(self.redraw_host, iter)
 	
@@ -3261,10 +3272,71 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			self.connections_model.remove(i)
 		for field in table.field_order:
 			i = self.connections_model.append(iter, (table.fields[field],))
-		
-def start():
+
+class output_handler:
+	def __init__(self, print_stdout=False, log_file=None, log_flush=False):
+		self.stdout = sys.stdout
+		self.print_stdout = print_stdout
+		self.log_flush = log_flush
+		sys.stdout = self
+		if log_file:
+			self.log_fp = file(log_file, "a+")
+		else:
+			self.log_fp = None
+		self.debug = print_stdout or log_file
+
+	def write(self, s):
+		if self.print_stdout:
+			self.stdout.write(s)
+			if self.log_flush: self.stdout.flush()
+		if self.log_fp:
+			s = s.strip("\r\n")
+			if not s: # do not write empty lines to logfile
+				return 
+			timestamp = str(datetime.datetime.now())[0:22]
+			self.log_fp.write("%s %s\n" % (timestamp, s.replace("\n", "\n " + (" " * len(timestamp)))))
+			if self.log_flush: self.log_fp.flush()
+
+def usage():
+	
+	print """usage: emma [-h|--help] [-d|--debug] [-l output_log [-f|--flush]]
+ -h|--help     show this help message
+ -d|--debug    output debug information on stdout
+ -l|--log FILE append all output to a specified log file
+ -f|--flush    flush {stdout,log} after each write
+"""
+	sys.exit(0)
+
+def start(args):
 	global new_instance
+
+	debug_output = False
+	log_file = None
+	log_flush = False
+
+	skip = False
+	for i, arg in enumerate(args):
+		if skip:
+			skip = False
+			continue
+		if arg == "-h" or arg == "--help":
+			usage()
+		elif arg == "-d" or arg == "--debug":
+			debug_output = True
+		elif arg == "-f" or arg == "--flush":
+			log_flush = True
+		elif arg == "-l" or arg == "--log":
+			if i + 1 == len(args): usage()
+			log_file = args[i + 1]
+			skip = True
+		else:
+			usage()
+
+	# this singleton will be accessible as sys.stdout!
+	output_handler(debug_output, log_file, log_flush)
+
 	e = Emma()
+
 	while 1:
 		gtk.main()
 		del e
@@ -3273,5 +3345,7 @@ def start():
 		new_instance = None
 		e.__init__()
 
+	return 0
+
 if __name__ == "__main__":
-	start()
+	sys.exit(start(sys.argv[1:]))

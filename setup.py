@@ -5,13 +5,13 @@ import sys
 from glob import glob
 from distutils.core import setup
 
-import emmalib
+from emmalib import version 
 
 setup(name="emma",
-      version=emmalib.version,
+      version=version,
       description="emma is the extendable mysql managing assistant",
       author="Florian Schmidt",
-      author_email="fastflo@users.sourceforge.net",
+      author_email="flo@fastflo.de",
       url="http://emma.sourceforge.net",
       scripts=['emma'],
       packages=[
