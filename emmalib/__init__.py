@@ -37,8 +37,6 @@ except:
 	print "no gtk. you will not be able to start emma."
 
 import pprint
-import inspect
-pp = pprint.PrettyPrinter()
 
 if __name__ != "__main__":
 	from emmalib import __file__ as emmalib_file
@@ -49,7 +47,7 @@ else:
 	from mysql_host import *
 	from mysql_query_tab import *
 
-version = "0.5"
+version = "0.6"
 new_instance = None
 our_module = None
 
@@ -73,14 +71,18 @@ if os.name in ["win32", "nt"]:
 else:
     emma_path = os.path.dirname(emmalib_file)
 
-icons_path = os.path.join(emma_path, "icons")
+emma_share_path = os.path.join(sys.prefix, "share/emma/")
+icons_path = os.path.join(emma_share_path, "icons")
+glade_path = os.path.join(emma_share_path, "glade")
 last_update = 0
 
 class Emma:
 	def __init__(self):
 		self.created_once = {}
 		self.query_count = 0
-		self.glade_file = os.path.join(emma_path, "emma.glade")
+		self.glade_path = glade_path
+		self.icons_path = icons_path
+		self.glade_file = os.path.join(glade_path, "emma.glade")
 		if not os.access(self.glade_file, os.R_OK):
 			print self.glade_file, "not found!"
 			sys.exit(-1)
@@ -858,10 +860,8 @@ class Emma:
 		q.apply_record.set_sensitive(True)
 		
 	def on_reload_self_activate(self, item):
-		module = inspect.getmodule(self)
-		print "reload", module
-		reload(module)
-		
+		pass
+
 	def on_apply_record_tool_clicked(self, button):
 		q = self.current_query
 		if not q.append_iter:
@@ -1837,7 +1837,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		aboutdialog.hide()
 
 	def on_changelog_activate(self, item):
-		fp = file(os.path.join(emma_path, "changelog"))
+		fp = file(os.path.join(emma_share_path, "changelog"))
 		changelog = fp.read()
 		fp.close()
 		w = self.xml.get_widget("changelog_window")

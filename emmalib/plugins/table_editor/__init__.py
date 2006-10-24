@@ -76,7 +76,9 @@ class table_editor:
 		self.plugin_dir = os.path.dirname(os.path.abspath(__file__))
 		self.glade_file = os.path.join(self.plugin_dir, "table_editor.glade")
 		if not os.access(self.glade_file, os.R_OK):
-			raise ValueError("glade file %s not found!" % self.glade_file)
+			self.glade_file = os.path.join(self.emma.glade_path, "table_editor.glade")
+			if not os.access(self.glade_file, os.R_OK):
+				raise ValueError("glade file %s not found!" % self.glade_file)
 		else:
 			print "galde file:", self.glade_file
 		
