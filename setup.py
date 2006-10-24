@@ -7,6 +7,13 @@ from distutils.core import setup
 
 from emmalib import version 
 
+data_files = glob('icons/*.png')
+data_files.extend([
+		'emma.glade', 
+		'table_editor.glade',
+		'changelog'
+		])
+
 setup(name="emma",
       version=version,
       description="emma is the extendable mysql managing assistant",
@@ -14,13 +21,18 @@ setup(name="emma",
       author_email="flo@fastflo.de",
       url="http://emma.sourceforge.net",
       scripts=['emma'],
+	  package_dir={'emmalib': 'emmalib'},
       packages=[
             'emmalib', 
             'emmalib.plugins.table_editor'
       ],
-      package_data={
-            'emmalib': ['emma.glade', "changelog", 'icons/*.png', 'plugins/table_editor/table_editor.glade'],
-      },
+	  package_data={
+		'emmalib': ,
+		'emmalib.plugins.table_editor': []
+		},
+      data_files=[
+		("share/emma/", data_files),
+      ],
       license="GPL",
       long_description="""
 Emma is a graphical toolkit for MySQL database developers and administrators
