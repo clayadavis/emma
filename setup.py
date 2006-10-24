@@ -7,12 +7,9 @@ from distutils.core import setup
 
 from emmalib import version 
 
-data_files = glob('icons/*.png')
-data_files.extend([
-		'emma.glade', 
-		'table_editor.glade',
-		'changelog'
-		])
+icon_data = glob('icons/*.png')
+glade_data = ['emmalib/emma.glade', 'emmalib/plugins/table_editor/table_editor.glade']
+other_data = ['changelog']
 
 setup(name="emma",
       version=version,
@@ -26,12 +23,10 @@ setup(name="emma",
             'emmalib', 
             'emmalib.plugins.table_editor'
       ],
-	  package_data={
-		'emmalib': ,
-		'emmalib.plugins.table_editor': []
-		},
       data_files=[
-		("share/emma/", data_files),
+		("share/emma/icons", icon_data),
+		("share/emma/glade", glade_data),
+		("share/emma", other_data),
       ],
       license="GPL",
       long_description="""

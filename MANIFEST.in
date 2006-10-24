@@ -1,0 +1,3 @@
+recursive-include emmalib  *.glade
+recursive-include icons  *.png
+include changelog

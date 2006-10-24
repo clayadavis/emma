@@ -1,6 +1,0 @@
-?package(emma):\
-	needs="X11"\
-	section="Apps/Databases"\
-	title="Emma"\
-	icon="/usr/share/emma/emmalib/icons/emma.png"\
-	command="/usr/bin/emma"
