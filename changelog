@@ -1,3 +1,18 @@
+emma (0.6) unstable; urgency=low
+  Tue, 24 Oct 2006 22:35:22 +0200:
+  * let all data files install to prefix + share/emma
+  Mon, 13 Nov 2006 19:45:01 +0100
+  * debian bug+patch Bug#398337: emma: Impossible to create a new connection
+    from Manolo Díaz
+  * bugfix: connection test button does not use given port number
+  * remember treeview cursor per tab
+  * automatic tab nameing with user defined pre-postfixes
+  * support for gtk themes thru "theme" config option - either as absolute 
+    path to theme-dir or as a subdir of os.path.join(sys.prefix, "share", "themes")
+  * included xfce's "Xfce-winter" theme from Olivier Fourdan
+  * first experimental pretty_format plugin - much work needed
+ -- Florian Schmidt <flo@fastflo.de> Mon, 13 Nov 2006 22:36:32 +0100
+
 emma (0.5) unstable; urgency=low
   * added copyright information to each .py file
   * enclose import of gtk in try/catch to allow setup.py to run without X

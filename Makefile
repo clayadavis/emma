@@ -8,7 +8,7 @@ deb:
 	ssh root@maggie /root/bin/rescan_packages
 
 sdist:
-	(echo -ne "emma\nsetup.py\nemmalib/changelog\n"; find ./emmalib/ -iname "*.py" ; find ./emmalib/ -iname "*png"; find ./emmalib/ -iname "*.glade") | sed -s "s,^./,," | sort > MANIFEST
+	(echo -ne "emma\nsetup.py\nchangelog\n"; find ./theme -type f ; find ./emmalib/ -iname "*.py" ; find ./icons -iname "*png"; find ./emmalib/ -iname "*.glade") | sed -s "s,^./,," | sort > MANIFEST
 	python2.4 setup.py sdist 
 
 clean:

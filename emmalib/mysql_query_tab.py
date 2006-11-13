@@ -18,6 +18,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
 import pango
+import gtk
+import traceback
 
 class mysql_query_tab:
 	def __init__(self, xml, nb):
@@ -50,8 +52,10 @@ class mysql_query_tab:
 		self.result_info = None
 		self.append_iter = None
 		self.save_result_sql.set_sensitive(False)
+		self.last_path = None
 		if hasattr(self, "query"):
 			self.textview.get_buffer().set_text(self.query)
+		self.last_auto_name = None
 
 	def __getstate__(self):
 		b = self.textview.get_buffer()
@@ -62,6 +66,39 @@ class mysql_query_tab:
 		print "query will pickle:", d
 		return d
 
+	def auto_rename(self, new_auto_name):
+		label = self.get_label()
+		if label is None:
+			return
+		if self.last_auto_name is None:
+			print "no last_auto_name"
+			label.set_text(new_auto_name)
+			self.last_auto_name = new_auto_name
+			return
+		current_name = label.get_text()
+		if self.last_auto_name in current_name:
+			print "setting new %r from old %r" % (new_auto_name, current_name)
+			label.set_text(current_name.replace(self.last_auto_name, new_auto_name))
+			self.last_auto_name = new_auto_name
+		else:
+			print "last auto name %r not in %r!" % (self.last_auto_name, current_name)
+		return
+
+	def get_label(self):
+		tab_widget = self.nb.get_tab_label(self.page)
+		if not tab_widget:
+			print "no tab widget"
+			return
+		labels = filter(lambda w: type(w) == gtk.Label, tab_widget.get_children())
+		if not labels:
+			print "no label found!"
+			return
+		return labels[0]
+
+	def user_rename(self, new_name):
+		tab_widget = self.nb.get_tab_label(self.page)
+		label = self.get_label()
+		label.set_text(new_name)
 
 	def destroy(self):
 		# try to free some memory
@@ -101,8 +138,11 @@ class mysql_query_tab:
 			h.user, hname,
 			dname
 		))
+		self.auto_rename("%s%s" % (h.name, dname))
 		
 	def set_current_host(self, host):
+		if self.current_host == host and host is not None and self.current_db == host.current_db:
+			return
 		self.current_host = host
 		if host:
 			self.current_db = host.current_db

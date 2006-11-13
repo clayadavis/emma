@@ -33,19 +33,18 @@ try:
 	import gobject
 	import gtk.gdk
 	import gtk.glade
+	if __name__ != "__main__":
+		from emmalib import __file__ as emmalib_file
+		from emmalib.mysql_host import *
+		from emmalib.mysql_query_tab import *
+	else:
+		emmalib_file = __file__
+		from mysql_host import *
+		from mysql_query_tab import *
 except:
 	print "no gtk. you will not be able to start emma."
 
 import pprint
-
-if __name__ != "__main__":
-	from emmalib import __file__ as emmalib_file
-	from emmalib.mysql_host import *
-	from emmalib.mysql_query_tab import *
-else:
-	emmalib_file = __file__
-	from mysql_host import *
-	from mysql_query_tab import *
 
 version = "0.6"
 new_instance = None
@@ -74,6 +73,7 @@ else:
 emma_share_path = os.path.join(sys.prefix, "share/emma/")
 icons_path = os.path.join(emma_share_path, "icons")
 glade_path = os.path.join(emma_share_path, "glade")
+themes_path = os.path.join(sys.prefix, "share", "themes")
 last_update = 0
 
 class Emma:
@@ -199,14 +199,27 @@ class Emma:
 					label = gtk.Label(q.name)
 					label.show()
 					self.query_notebook.append_page(new_page, label)
-		
+
+		if self.config["theme"]:
+			self.select_theme(self.config["theme"])
+
 		if int(self.config["ping_connection_interval"]) > 0:
 			gobject.timeout_add(
 				int(self.config["ping_connection_interval"]) * 1000,
 				self.on_connection_ping
 			)
 		self.init_plugins()
-		
+
+	def select_theme(self, theme):
+		theme_file = os.path.join(theme, "gtk-2.0", "gtkrc")
+		if not os.access(theme_file, os.R_OK):
+			theme_file = os.path.join(themes_path, theme, "gtk-2.0", "gtkrc")
+			if not os.access(theme_file, os.R_OK):
+				print "could not load theme file: %r" % theme_file
+				return
+		print "loading theme file %r" % theme_file
+		gtk.rc_parse(theme_file)
+
 	def on_reload_plugins_activate(self, *args):
 		self.unload_plugins()
 		self.load_plugins()
@@ -1775,7 +1788,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		self.add_query_tab(mysql_query_tab(xml, self.query_notebook))
 		label = tab_label_hbox.get_widget("tab_label_hbox")
 		qtlabel = tab_label_hbox.get_widget("query_tab_label")
-		qtlabel.set_text("query%d" % self.query_count)
+		#qtlabel.set_text("query%d" % self.query_count)
 		self.query_notebook.append_page(new_page, label)
 		self.query_notebook.set_current_page(len(self.queries) - 1)
 		self.current_query.textview.grab_focus()
@@ -1785,7 +1798,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 	def on_query_notebook_switch_page(self, nb, pointer, page):
 		if page >= len(self.queries):
 			page = len(self.queries) - 1
-		self.current_query = self.queries[page]
+		q = self.current_query = self.queries[page]
 		self.on_query_db_eventbox_button_press_event(None, None)
 	
 	def on_closequery_button_clicked(self, button):
@@ -1796,18 +1809,17 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		gc.collect()
 		
 	def on_rename_query_tab_clicked(self, button):
-		tab_widget = self.query_notebook.get_tab_label(self.current_query.page)
-		labels = filter(lambda w: type(w) == gtk.Label, tab_widget.get_children())
-		if not labels:
-			print "no label found!"
-			return
-		label = labels[0]
+		label = self.current_query.get_label()
 		new_name = self.input("rename tab", "please enter the new name of this tab:",
 			label.get_text()
 		)
 		if new_name is None:
 		    return
-		label.set_text(new_name)
+		if new_name == "":
+			self.current_query.last_auto_name = None
+			self.current_query.update_db_label()
+			return
+		self.current_query.user_rename(new_name)
 		
 	def on_processlist_refresh_value_change(self, button):
 		value = button.get_value()
@@ -1915,12 +1927,17 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 	def on_connections_tv_cursor_changed(self, tv):
 		path, column = tv.get_cursor()
 		nb = self.xml.get_widget("main_notebook")
+		if path is None:
+			print "get_cursor() returned none. don't know which datebase is selected."
+			return
+
 		if len(path) == 3 and nb.get_current_page() == 3:
 			print "update table view..."
 			self.update_table_view(path)
 		q = self.current_query
 		if not q:
 			return
+		q.last_path = path
 		if len(path) == 1: # host
 			i = self.connections_model.get_iter(path)
 			o = self.connections_model[i][0]
@@ -2284,7 +2301,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			if not data[0]:
 				self.connection_window.hide()
 				return
-			data.append(False)
 			self.add_mysql_host(*data)
 		else:
 			for n in self.cw_props:
@@ -2300,8 +2316,13 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		widget_map = {
 			"password": "passwd"
 		}
-		for n in ["host", "user", "password"]:
-			data[widget_map.get(n, n)] = self.xml.get_widget("cw_%s" % n).get_text()
+		for n in ["host", "user", "password", "port:int"]:
+			if ":" in n:
+				n, typename = n.split(":", 1)
+				data[widget_map.get(n, n)] = eval("%s(%r)" % (typename, self.xml.get_widget("cw_%s" % n).get_text()))
+			else:
+				data[widget_map.get(n, n)] = self.xml.get_widget("cw_%s" % n).get_text()
+			
 			
 		try:
 			handle = _mysql.connect(**data)
@@ -2910,6 +2931,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			"ask_execute_query_from_disk_min_size": "1024000",
 			"connect_timeout": "7",
 			"db_encoding": "latin1",
+			"theme": os.path.join(emma_share_path, "theme"),
 			"supported_db_encodings": 
 				"latin1 (iso8859-1, cp819); "
 				"latin2 (iso8859-2); "
@@ -3034,7 +3056,10 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			h.set_update_ui(self.redraw_host, iter) # call before init!
 			self.redraw_host(h, iter)
 			self.current_host = h
-		
+
+	def on_reload_theme_activate(self, *args):
+		gtk.rc_reparse_all()
+
 	def on_query_bottom_eventbox_button_press_event(self, ebox, event):
 		self.xml.get_widget("query_encoding_menu").popup(None, None, None, event.button, event.time);
 		
@@ -3042,7 +3067,15 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		q = self.current_query
 		host = q.current_host
 		db = q.current_db
-			
+		if q.last_path is not None:
+			try:
+				self.connections_model.get_iter(q.last_path)
+				self.connections_tv.set_cursor(q.last_path)
+				return
+			except:
+				# path was not valid
+				pass
+
 		i = self.connections_model.get_iter_root()
 		while i and self.connections_model.iter_is_valid(i):
 			if self.connections_model[i][0] == host:

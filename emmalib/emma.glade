@@ -42,183 +42,206 @@
 	      <property name="spacing">0</property>
 
 	      <child>
-		<widget class="GtkMenuBar" id="menubar1">
+		<widget class="GtkAlignment" id="alignment4">
 		  <property name="visible">True</property>
-		  <property name="pack_direction">GTK_PACK_DIRECTION_LTR</property>
-		  <property name="child_pack_direction">GTK_PACK_DIRECTION_LTR</property>
+		  <property name="xalign">0.5</property>
+		  <property name="yalign">0.5</property>
+		  <property name="xscale">1</property>
+		  <property name="yscale">1</property>
+		  <property name="top_padding">0</property>
+		  <property name="bottom_padding">0</property>
+		  <property name="left_padding">0</property>
+		  <property name="right_padding">0</property>
 
 		  <child>
-		    <widget class="GtkMenuItem" id="menuitem1">
+		    <widget class="GtkMenuBar" id="menubar1">
 		      <property name="visible">True</property>
-		      <property name="label" translatable="yes">_File</property>
-		      <property name="use_underline">True</property>
+		      <property name="pack_direction">GTK_PACK_DIRECTION_LTR</property>
+		      <property name="child_pack_direction">GTK_PACK_DIRECTION_LTR</property>
 
 		      <child>
-			<widget class="GtkMenu" id="menuitem1_menu">
+			<widget class="GtkMenuItem" id="menuitem1">
+			  <property name="visible">True</property>
+			  <property name="label" translatable="yes">_File</property>
+			  <property name="use_underline">True</property>
 
 			  <child>
-			    <widget class="GtkMenuItem" id="execute_query_from_disk">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">execute query from disk</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_execute_query_from_disk_activate" last_modification_time="Sat, 11 Mar 2006 08:15:30 GMT"/>
-			    </widget>
-			  </child>
+			    <widget class="GtkMenu" id="menuitem1_menu">
 
-			  <child>
-			    <widget class="GtkImageMenuItem" id="reload_plugins">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">reload plugins</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_reload_plugins_activate" last_modification_time="Sun, 04 Jun 2006 17:10:12 GMT"/>
-
-			      <child internal-child="image">
-				<widget class="GtkImage" id="image357">
+			      <child>
+				<widget class="GtkMenuItem" id="execute_query_from_disk">
 				  <property name="visible">True</property>
-				  <property name="stock">gtk-refresh</property>
-				  <property name="icon_size">1</property>
-				  <property name="xalign">0.5</property>
-				  <property name="yalign">0.5</property>
-				  <property name="xpad">0</property>
-				  <property name="ypad">0</property>
+				  <property name="label" translatable="yes">execute query from disk</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_execute_query_from_disk_activate" last_modification_time="Sat, 11 Mar 2006 08:15:30 GMT"/>
 				</widget>
 			      </child>
-			    </widget>
-			  </child>
 
-			  <child>
-			    <widget class="GtkMenuItem" id="reread_config">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">reload config</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_reread_config_activate" last_modification_time="Sat, 12 Aug 2006 17:43:22 GMT"/>
-			    </widget>
-			  </child>
-
-			  <child>
-			    <widget class="GtkImageMenuItem" id="reload_self">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">reload self</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_reload_self_activate" last_modification_time="Sun, 13 Aug 2006 14:55:18 GMT"/>
-
-			      <child internal-child="image">
-				<widget class="GtkImage" id="image358">
+			      <child>
+				<widget class="GtkImageMenuItem" id="reload_plugins">
 				  <property name="visible">True</property>
-				  <property name="stock">gtk-refresh</property>
-				  <property name="icon_size">1</property>
-				  <property name="xalign">0.5</property>
-				  <property name="yalign">0.5</property>
-				  <property name="xpad">0</property>
-				  <property name="ypad">0</property>
+				  <property name="label" translatable="yes">reload plugins</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_reload_plugins_activate" last_modification_time="Sun, 04 Jun 2006 17:10:12 GMT"/>
+
+				  <child internal-child="image">
+				    <widget class="GtkImage" id="image363">
+				      <property name="visible">True</property>
+				      <property name="stock">gtk-refresh</property>
+				      <property name="icon_size">1</property>
+				      <property name="xalign">0.5</property>
+				      <property name="yalign">0.5</property>
+				      <property name="xpad">0</property>
+				      <property name="ypad">0</property>
+				    </widget>
+				  </child>
 				</widget>
 			      </child>
-			    </widget>
-			  </child>
 
-			  <child>
-			    <widget class="GtkSeparatorMenuItem" id="separator5">
-			      <property name="visible">True</property>
-			    </widget>
-			  </child>
-
-			  <child>
-			    <widget class="GtkImageMenuItem" id="save_workspace">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">save workspace</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_save_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
-
-			      <child internal-child="image">
-				<widget class="GtkImage" id="image359">
+			      <child>
+				<widget class="GtkMenuItem" id="reread_config">
 				  <property name="visible">True</property>
-				  <property name="stock">gtk-save-as</property>
-				  <property name="icon_size">1</property>
-				  <property name="xalign">0.5</property>
-				  <property name="yalign">0.5</property>
-				  <property name="xpad">0</property>
-				  <property name="ypad">0</property>
+				  <property name="label" translatable="yes">reload config</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_reread_config_activate" last_modification_time="Sat, 12 Aug 2006 17:43:22 GMT"/>
 				</widget>
 			      </child>
-			    </widget>
-			  </child>
 
-			  <child>
-			    <widget class="GtkImageMenuItem" id="restore_workspace">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">restore workspace</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_restore_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
-
-			      <child internal-child="image">
-				<widget class="GtkImage" id="image360">
+			      <child>
+				<widget class="GtkImageMenuItem" id="reload_self">
 				  <property name="visible">True</property>
-				  <property name="stock">gtk-open</property>
-				  <property name="icon_size">1</property>
-				  <property name="xalign">0.5</property>
-				  <property name="yalign">0.5</property>
-				  <property name="xpad">0</property>
-				  <property name="ypad">0</property>
+				  <property name="label" translatable="yes">reload self</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_reload_self_activate" last_modification_time="Sun, 13 Aug 2006 14:55:18 GMT"/>
+
+				  <child internal-child="image">
+				    <widget class="GtkImage" id="image364">
+				      <property name="visible">True</property>
+				      <property name="stock">gtk-refresh</property>
+				      <property name="icon_size">1</property>
+				      <property name="xalign">0.5</property>
+				      <property name="yalign">0.5</property>
+				      <property name="xpad">0</property>
+				      <property name="ypad">0</property>
+				    </widget>
+				  </child>
 				</widget>
 			      </child>
-			    </widget>
-			  </child>
 
-			  <child>
-			    <widget class="GtkSeparatorMenuItem" id="separatormenuitem1">
-			      <property name="visible">True</property>
-			    </widget>
-			  </child>
+			      <child>
+				<widget class="GtkMenuItem" id="reload_theme">
+				  <property name="visible">True</property>
+				  <property name="label" translatable="yes">reload theme</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_reload_theme_activate" last_modification_time="Mon, 13 Nov 2006 21:07:09 GMT"/>
+				</widget>
+			      </child>
 
-			  <child>
-			    <widget class="GtkImageMenuItem" id="quit_button">
-			      <property name="visible">True</property>
-			      <property name="label">gtk-quit</property>
-			      <property name="use_stock">True</property>
-			      <signal name="activate" handler="on_quit_activate" last_modification_time="Sun, 15 Jan 2006 16:41:33 GMT"/>
+			      <child>
+				<widget class="GtkSeparatorMenuItem" id="separator5">
+				  <property name="visible">True</property>
+				</widget>
+			      </child>
+
+			      <child>
+				<widget class="GtkImageMenuItem" id="save_workspace">
+				  <property name="visible">True</property>
+				  <property name="label" translatable="yes">save workspace</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_save_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
+
+				  <child internal-child="image">
+				    <widget class="GtkImage" id="image365">
+				      <property name="visible">True</property>
+				      <property name="stock">gtk-save-as</property>
+				      <property name="icon_size">1</property>
+				      <property name="xalign">0.5</property>
+				      <property name="yalign">0.5</property>
+				      <property name="xpad">0</property>
+				      <property name="ypad">0</property>
+				    </widget>
+				  </child>
+				</widget>
+			      </child>
+
+			      <child>
+				<widget class="GtkImageMenuItem" id="restore_workspace">
+				  <property name="visible">True</property>
+				  <property name="label" translatable="yes">restore workspace</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_restore_workspace_activate" last_modification_time="Wed, 01 Mar 2006 20:17:29 GMT"/>
+
+				  <child internal-child="image">
+				    <widget class="GtkImage" id="image366">
+				      <property name="visible">True</property>
+				      <property name="stock">gtk-open</property>
+				      <property name="icon_size">1</property>
+				      <property name="xalign">0.5</property>
+				      <property name="yalign">0.5</property>
+				      <property name="xpad">0</property>
+				      <property name="ypad">0</property>
+				    </widget>
+				  </child>
+				</widget>
+			      </child>
+
+			      <child>
+				<widget class="GtkSeparatorMenuItem" id="separatormenuitem1">
+				  <property name="visible">True</property>
+				</widget>
+			      </child>
+
+			      <child>
+				<widget class="GtkImageMenuItem" id="quit_button">
+				  <property name="visible">True</property>
+				  <property name="label">gtk-quit</property>
+				  <property name="use_stock">True</property>
+				  <signal name="activate" handler="on_quit_activate" last_modification_time="Sun, 15 Jan 2006 16:41:33 GMT"/>
+				</widget>
+			      </child>
 			    </widget>
 			  </child>
 			</widget>
 		      </child>
-		    </widget>
-		  </child>
-
-		  <child>
-		    <widget class="GtkMenuItem" id="menuitem4">
-		      <property name="visible">True</property>
-		      <property name="label" translatable="yes">_Help</property>
-		      <property name="use_underline">True</property>
 
 		      <child>
-			<widget class="GtkMenu" id="menuitem4_menu">
+			<widget class="GtkMenuItem" id="menuitem4">
+			  <property name="visible">True</property>
+			  <property name="label" translatable="yes">_Help</property>
+			  <property name="use_underline">True</property>
 
 			  <child>
-			    <widget class="GtkImageMenuItem" id="changelog">
-			      <property name="visible">True</property>
-			      <property name="label" translatable="yes">Changelog</property>
-			      <property name="use_underline">True</property>
-			      <signal name="activate" handler="on_changelog_activate" last_modification_time="Sat, 12 Nov 2005 23:41:31 GMT"/>
+			    <widget class="GtkMenu" id="menuitem4_menu">
 
-			      <child internal-child="image">
-				<widget class="GtkImage" id="image361">
+			      <child>
+				<widget class="GtkImageMenuItem" id="changelog">
 				  <property name="visible">True</property>
-				  <property name="stock">gtk-about</property>
-				  <property name="icon_size">1</property>
-				  <property name="xalign">0.5</property>
-				  <property name="yalign">0.5</property>
-				  <property name="xpad">0</property>
-				  <property name="ypad">0</property>
+				  <property name="label" translatable="yes">Changelog</property>
+				  <property name="use_underline">True</property>
+				  <signal name="activate" handler="on_changelog_activate" last_modification_time="Sat, 12 Nov 2005 23:41:31 GMT"/>
+
+				  <child internal-child="image">
+				    <widget class="GtkImage" id="image367">
+				      <property name="visible">True</property>
+				      <property name="stock">gtk-about</property>
+				      <property name="icon_size">1</property>
+				      <property name="xalign">0.5</property>
+				      <property name="yalign">0.5</property>
+				      <property name="xpad">0</property>
+				      <property name="ypad">0</property>
+				    </widget>
+				  </child>
 				</widget>
 			      </child>
-			    </widget>
-			  </child>
 
-			  <child>
-			    <widget class="GtkImageMenuItem" id="about">
-			      <property name="visible">True</property>
-			      <property name="label">gtk-about</property>
-			      <property name="use_stock">True</property>
-			      <signal name="activate" handler="on_about_activate" last_modification_time="Sun, 15 Jan 2006 16:43:52 GMT"/>
+			      <child>
+				<widget class="GtkImageMenuItem" id="about">
+				  <property name="visible">True</property>
+				  <property name="label">gtk-about</property>
+				  <property name="use_stock">True</property>
+				  <signal name="activate" handler="on_about_activate" last_modification_time="Sun, 15 Jan 2006 16:43:52 GMT"/>
+				</widget>
+			      </child>
 			    </widget>
 			  </child>
 			</widget>
