@@ -55,20 +55,9 @@ re_src_after_order = "(?:[ \r\n\t]" + re_src_after_order_end + ")"
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order_end + ")"
 
 emmalib_file = os.path.abspath(emmalib_file)
-if os.name in ["win32", "nt"]:
-	print "Windows detected"
-	emma_path = emmalib_file
-	count = 5
-	dirs_checked = []
-	while not os.access(os.path.join(emma_path, "emma.glade"), os.R_OK):
-		dirs_checked.append(emma_path)
-		emma_path = os.path.dirname(emma_path)
-		count -= 1
-		if not count:
-			print "could not find glade file! checked these dirs:", dirs_checked
-			sys.exit(0)
-else:
-    emma_path = os.path.dirname(emmalib_file)
+print os.path.join(sys.prefix, "share/emma/")
+
+emma_path = os.path.dirname(emmalib_file)
 
 emma_share_path = os.path.join(sys.prefix, "share/emma/")
 icons_path = os.path.join(emma_share_path, "icons")
@@ -1013,7 +1002,8 @@ class Emma:
 				('(?:[^\\]|\\.)*?')|			# single quoted strings
 				(`(?:[^\\]|\\.)*?`)|			# backtick quoted strings
 				(/\*.*?\*/)|					# c-style comments
-				(\#.*$)|						# shell-style comments
+				(\#[^\n]*)|						# shell-style comments
+				(\--[^\n]*)|						# sql-style comments
 				([^;])							# everything but a semicolon
 				)+
 			""", re.VERBOSE)
@@ -1288,6 +1278,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
 			if query_start is None:
 				break;
 			thisquery = text[query_start:end]
+			print "about to execute query %r" % thisquery
 			start = end + 1
 				
 			thisquery.strip(" \r\n\t;")
@@ -3382,3 +3373,4 @@ def start(args):
 
 if __name__ == "__main__":
 	sys.exit(start(sys.argv[1:]))
+                                                                                                                                                                                                                                                                                                  
