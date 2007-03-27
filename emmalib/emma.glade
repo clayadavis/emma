@@ -3006,7 +3006,7 @@ successor of yamysqlfront</property>
       <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image336">
+	<widget class="GtkImage" id="image378">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-copy</property>
 	  <property name="icon_size">1</property>
@@ -3027,7 +3027,7 @@ successor of yamysqlfront</property>
       <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image337">
+	<widget class="GtkImage" id="image379">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-copy</property>
 	  <property name="icon_size">1</property>
@@ -3037,6 +3037,15 @@ successor of yamysqlfront</property>
 	  <property name="ypad">0</property>
 	</widget>
       </child>
+    </widget>
+  </child>
+
+  <child>
+    <widget class="GtkMenuItem" id="copy_record_as_quoted_csv">
+      <property name="visible">True</property>
+      <property name="label" translatable="yes">copy record as quoted csv</property>
+      <property name="use_underline">True</property>
+      <signal name="activate" handler="on_query_popup" last_modification_time="Tue, 27 Mar 2007 19:38:50 GMT"/>
     </widget>
   </child>
 
@@ -3048,7 +3057,7 @@ successor of yamysqlfront</property>
       <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image338">
+	<widget class="GtkImage" id="image380">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-copy</property>
 	  <property name="icon_size">1</property>
@@ -3062,6 +3071,15 @@ successor of yamysqlfront</property>
   </child>
 
   <child>
+    <widget class="GtkMenuItem" id="copy_column_as_quoted_csv">
+      <property name="visible">True</property>
+      <property name="label" translatable="yes">copy column as quoted csv</property>
+      <property name="use_underline">True</property>
+      <signal name="activate" handler="on_query_popup" last_modification_time="Tue, 27 Mar 2007 19:38:50 GMT"/>
+    </widget>
+  </child>
+
+  <child>
     <widget class="GtkImageMenuItem" id="copy_column_names">
       <property name="visible">True</property>
       <property name="label" translatable="yes">copy column names</property>
@@ -3069,7 +3087,7 @@ successor of yamysqlfront</property>
       <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image339">
+	<widget class="GtkImage" id="image381">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-copy</property>
 	  <property name="icon_size">1</property>
@@ -3099,7 +3117,7 @@ successor of yamysqlfront</property>
 	      <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
 	      <child internal-child="image">
-		<widget class="GtkImage" id="image340">
+		<widget class="GtkImage" id="image382">
 		  <property name="visible">True</property>
 		  <property name="stock">gtk-edit</property>
 		  <property name="icon_size">1</property>
@@ -3120,7 +3138,7 @@ successor of yamysqlfront</property>
 	      <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
 	      <child internal-child="image">
-		<widget class="GtkImage" id="image341">
+		<widget class="GtkImage" id="image383">
 		  <property name="visible">True</property>
 		  <property name="stock">gtk-edit</property>
 		  <property name="icon_size">1</property>
@@ -3141,7 +3159,7 @@ successor of yamysqlfront</property>
 	      <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 22:08:18 GMT"/>
 
 	      <child internal-child="image">
-		<widget class="GtkImage" id="image342">
+		<widget class="GtkImage" id="image384">
 		  <property name="visible">True</property>
 		  <property name="stock">gtk-edit</property>
 		  <property name="icon_size">1</property>
@@ -3162,7 +3180,7 @@ successor of yamysqlfront</property>
 	      <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 23:04:33 GMT"/>
 
 	      <child internal-child="image">
-		<widget class="GtkImage" id="image343">
+		<widget class="GtkImage" id="image385">
 		  <property name="visible">True</property>
 		  <property name="stock">gtk-edit</property>
 		  <property name="icon_size">1</property>
@@ -3183,7 +3201,7 @@ successor of yamysqlfront</property>
 	      <signal name="activate" handler="on_query_popup" last_modification_time="Sat, 25 Feb 2006 23:07:49 GMT"/>
 
 	      <child internal-child="image">
-		<widget class="GtkImage" id="image344">
+		<widget class="GtkImage" id="image386">
 		  <property name="visible">True</property>
 		  <property name="stock">gtk-edit</property>
 		  <property name="icon_size">1</property>
@@ -3214,7 +3232,7 @@ successor of yamysqlfront</property>
       <signal name="activate" handler="on_add_record_tool_clicked" last_modification_time="Sat, 25 Feb 2006 22:06:06 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image345">
+	<widget class="GtkImage" id="image387">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-add</property>
 	  <property name="icon_size">1</property>
@@ -3235,7 +3253,7 @@ successor of yamysqlfront</property>
       <signal name="activate" handler="on_delete_record_tool_clicked" last_modification_time="Sat, 25 Feb 2006 22:07:08 GMT"/>
 
       <child internal-child="image">
-	<widget class="GtkImage" id="image346">
+	<widget class="GtkImage" id="image388">
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-delete</property>
 	  <property name="icon_size">1</property>

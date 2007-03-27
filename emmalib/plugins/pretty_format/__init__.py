@@ -310,7 +310,7 @@ select * from user;
 				p = e
 				continue
 
-			if token.lower() == "where":
+			if token.lower() in ("where", "on"):
 				output.write("\n")
 				output.write(kw(token))
 				output.write("\n\t")
@@ -343,9 +343,12 @@ select * from user;
 
 
 			if current_statement == "select" and current_state == "tables":
-				output.write(token)
-				if token == ",":
-					output.write("\n\t")
+				if token.lower() in "join,left,right,inner".split(","):
+					output.write(" %s " % kw(token))
+				else:
+					output.write(token)
+					if token == ",":
+						output.write("\n\t")
 				p = e
 				continue
 			if current_statement == "order":
@@ -389,7 +392,7 @@ select * from user;
 		p = 0
 		tl = len(text)
 		token = None
-		keywords = "select,from,left,join,right,inner,where,and,or,order,by,having,group,limit,union,distinct"
+		keywords = "select,from,left,join,right,inner,where,and,or,on,order,by,having,group,limit,union,distinct"
 		keywords = keywords.split(",")
 		token = None
 		last_token = token

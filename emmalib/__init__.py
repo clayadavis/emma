@@ -28,11 +28,6 @@ import datetime
 import bz2
 
 try:
-	import gtk
-	from gtk import keysyms
-	import gobject
-	import gtk.gdk
-	import gtk.glade
 	if __name__ != "__main__":
 		from emmalib import __file__ as emmalib_file
 		from emmalib.mysql_host import *
@@ -41,6 +36,11 @@ try:
 		emmalib_file = __file__
 		from mysql_host import *
 		from mysql_query_tab import *
+	import gtk
+	from gtk import keysyms
+	import gobject
+	import gtk.gdk
+	import gtk.glade
 except:
 	print "no gtk. you will not be able to start emma."
 
@@ -55,14 +55,23 @@ re_src_after_order = "(?:[ \r\n\t]" + re_src_after_order_end + ")"
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order_end + ")"
 
 emmalib_file = os.path.abspath(emmalib_file)
-print os.path.join(sys.prefix, "share/emma/")
+	
+print "sys prefix:", sys.prefix
 
 emma_path = os.path.dirname(emmalib_file)
 
-emma_share_path = os.path.join(sys.prefix, "share/emma/")
-icons_path = os.path.join(emma_share_path, "icons")
-glade_path = os.path.join(emma_share_path, "glade")
-themes_path = os.path.join(sys.prefix, "share", "themes")
+if os.path.isdir("emmalib"):
+	# svn dev env
+	emma_share_path = "emmalib"
+	icons_path = "icons"
+	glade_path = emma_share_path
+	themes_path = os.path.join(sys.prefix, "share", "theme")
+else:
+	emma_share_path = os.path.join(sys.prefix, "share/emma/")
+	icons_path = os.path.join(emma_share_path, "icons")
+	glade_path = os.path.join(emma_share_path, "glade")
+	themes_path = os.path.join(sys.prefix, "share", "themes")
+
 last_update = 0
 
 class Emma:
@@ -76,7 +85,7 @@ class Emma:
 			print self.glade_file, "not found!"
 			sys.exit(-1)
 		
-		print "galde source file:", [self.glade_file]
+		print "glade source file:", [self.glade_file]
 		self.xml = gtk.glade.XML(self.glade_file)
 		self.mainwindow = self.xml.get_widget("mainwindow")
 		self.mainwindow.connect('destroy', lambda *args: gtk.main_quit())
@@ -189,7 +198,7 @@ class Emma:
 					label.show()
 					self.query_notebook.append_page(new_page, label)
 
-		if self.config["theme"]:
+		if self.config["theme"] and self.config["use_theme"].lower() == "true":
 			self.select_theme(self.config["theme"])
 
 		if int(self.config["ping_connection_interval"]) > 0:
@@ -1845,7 +1854,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		fp.close()
 		w = self.xml.get_widget("changelog_window")
 		tv = self.xml.get_widget("changelog_text")
-		tv.get_buffer().set_text(changelog)
+		tv.get_buffer().set_text(changelog.decode("latin1", "replace"))
 		w.connect('delete-event', self.on_changelog_delete)
 		w.show()
 		
@@ -2440,6 +2449,17 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				if not v is None: value += v
 			self.clipboard.set_text(value)
 			self.pri_clipboard.set_text(value)
+		elif item.name == "copy_record_as_quoted_csv":
+			col_max = q.model.get_n_columns()
+			value = ""
+			for col_num in range(col_max):
+				if value: value += self.config["copy_record_as_csv_delim"]
+				v = q.model.get_value(iter, col_num)
+				if not v is None: 
+					v = v.replace("\"", "\\\"")
+					value += '"%s"' % v
+			self.clipboard.set_text(value)
+			self.pri_clipboard.set_text(value)
 		elif item.name == "copy_column_as_csv":
 			col_max = q.model.get_n_columns()
 			for col_num in range(col_max):
@@ -2454,6 +2474,25 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				if value: value += self.config["copy_record_as_csv_delim"]
 				v = q.model.get_value(iter, col_num)
 				if not v is None: value += v
+				iter = q.model.iter_next(iter)
+			self.clipboard.set_text(value)
+			self.pri_clipboard.set_text(value)
+		elif item.name == "copy_column_as_quoted_csv":
+			col_max = q.model.get_n_columns()
+			for col_num in range(col_max):
+				if column == q.treeview.get_column(col_num):
+					break
+			else:
+				print "column not found!"
+				return
+			value = ""
+			iter = q.model.get_iter_first()
+			while iter:
+				if value: value += self.config["copy_record_as_csv_delim"]
+				v = q.model.get_value(iter, col_num)
+				if not v is None: 
+					v = v.replace("\"", "\\\"")
+					value += '"%s"' % v
 				iter = q.model.iter_next(iter)
 			self.clipboard.set_text(value)
 			self.pri_clipboard.set_text(value)
@@ -2922,6 +2961,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			"ask_execute_query_from_disk_min_size": "1024000",
 			"connect_timeout": "7",
 			"db_encoding": "latin1",
+			"use_theme": "false",
 			"theme": os.path.join(emma_share_path, "theme"),
 			"supported_db_encodings": 
 				"latin1 (iso8859-1, cp819); "

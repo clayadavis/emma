@@ -1,3 +1,9 @@
+emma (0.7) unstable; urgency=low
+  * support packaging environments without gtk
+  * theme is disabled per default (use_theme config option)
+  * changelog file uses latin1 encoding
+  * added pretty format patch from Piotr Ozarowski
+	
 emma (0.6) unstable; urgency=low
   Tue, 24 Oct 2006 22:35:22 +0200:
   * let all data files install to prefix + share/emma
