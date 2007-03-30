@@ -1,5 +1,5 @@
-#!/usr/bin/python2.4
-# -*- coding: utf-8 -*-
+#!/usr/bin/python
+# -*- coding: utf-8; mode: python -*-
 # emma
 #
 # Copyright (C) 2006 Florian Schmidt (flo@fastflo.de)

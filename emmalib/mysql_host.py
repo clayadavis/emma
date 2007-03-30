@@ -17,9 +17,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
+try:
+	import _mysql
+	import _mysql_exceptions
+except:
+	print "no mysql"
+	
 import sys
-import _mysql
-import _mysql_exceptions
 import time
 import re
 import traceback

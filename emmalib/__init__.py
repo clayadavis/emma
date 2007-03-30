@@ -27,22 +27,23 @@ import pickle
 import datetime
 import bz2
 
+if __name__ != "__main__":
+	from emmalib import __file__ as emmalib_file
+	from emmalib.mysql_host import *
+	from emmalib.mysql_query_tab import *
+else:
+	emmalib_file = __file__
+	from mysql_host import *
+	from mysql_query_tab import *
+
 try:
-	if __name__ != "__main__":
-		from emmalib import __file__ as emmalib_file
-		from emmalib.mysql_host import *
-		from emmalib.mysql_query_tab import *
-	else:
-		emmalib_file = __file__
-		from mysql_host import *
-		from mysql_query_tab import *
 	import gtk
 	from gtk import keysyms
 	import gobject
 	import gtk.gdk
 	import gtk.glade
 except:
-	print "no gtk. you will not be able to start emma."
+	print "no gtk. you will not be able to start emma.", sys.exc_value
 
 import pprint
 
