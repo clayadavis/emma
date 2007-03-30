@@ -78,6 +78,7 @@ last_update = 0
 class Emma:
 	def __init__(self):
 		self.created_once = {}
+		self.query_changed_listener = []
 		self.query_count = 0
 		self.glade_path = glade_path
 		self.icons_path = icons_path
@@ -1801,6 +1802,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			page = len(self.queries) - 1
 		q = self.current_query = self.queries[page]
 		self.on_query_db_eventbox_button_press_event(None, None)
+		self.query_changed(q)
+
+	def query_changed(self, q):
+		for f in self.query_changed_listener:
+			try:
+				f(q)
+			except:
+				print "query_change_listener", f, "had exception:", sys.exc_value
 	
 	def on_closequery_button_clicked(self, button):
 		if len(self.queries) == 1: return

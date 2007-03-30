@@ -75,12 +75,9 @@ class syntax_highlight:
 		self.load_config()
 
 		#self.install_toolbar_item("query_toolbar", gtk.STOCK_INDENT, "do SH", self.do_sh)
-		
+
+		self.emma.query_changed_listener.append(self.query_changed)
 		q = self.emma.current_query
-		buffer = self.buffer = q.textview.get_buffer()
-		self.populate_buffer(buffer)
-		buffer.connect("changed", self.buffer_changed)
-		
 		if sys.stdout.debug:
 			# check if we are running with debug output - enable example text
 			self.set_query_text(q, """select * 
@@ -90,12 +87,19 @@ a = "string"
 or b = 'single' 
 order by rand() 
 limit 10 ;""")
-		self.buffer_changed(buffer)
+		self.query_changed(q)
 
 	def cleanup(self):
+		self.emma.query_changed_listener.remove(self.query_changed)
 		for item, toolbar in self.toolbar_items:
 			toolbar.remove(item)		
 			del item
+
+	def query_changed(self, q):
+		buffer = self.buffer = q.textview.get_buffer()
+		self.populate_buffer(buffer)
+		buffer.connect("changed", self.buffer_changed)
+		self.buffer_changed(buffer)
 
 	def load_config(self):
 		self.keywords = "select,from,where,limit,left,right,inner,outer,join,order,by,and,or,not"
@@ -138,7 +142,7 @@ limit 10 ;""")
 			("comment", "#009900"),
 			("constant","#e07818"))
 		start, end = buffer.get_bounds()
-		buffer.remove_all_tags(start, end)
+		#buffer.remove_all_tags(start, end)
 		tt = buffer.get_tag_table()
 		for name, color in tags:
 			name = "sql_%s" % name
