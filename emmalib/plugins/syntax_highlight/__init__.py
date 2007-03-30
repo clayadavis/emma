@@ -31,7 +31,40 @@ import cStringIO
 import string
 import StringIO
 
-import snippet.tokenize as tokenize
+try:
+	import snippet.tokenize as tokenize
+except:
+	print "you need to have pysnippet installed for syntax highlighting.\nget it from http://sourceforge.net/projects/pysnippet"
+
+def max_frequency(mfreq):
+	def decorator(f):
+		last = {}
+		callback_registered = [False]
+		def call_later_f(*args):
+			#print "timer executing function", f
+			now = time.time()
+			last_ret = f(*args)
+			last[f] = last_ret, now
+			callback_registered[0] = False
+			return False
+			
+		def wrap(*args):
+			last_ret, l = last.get(f, (None, None))
+			now = time.time()
+			if l is None or (now - l) >= mfreq:
+				#print "executing", f, args
+				last_ret = f(*args)
+				last[f] = last_ret, now
+				return last_ret
+			#print "not executing"
+			if not callback_registered[0]:
+				# register callback
+				#print "register callback"
+				callback_registered[0] = True
+				gobject.timeout_add((int)(mfreq * 1000.), call_later_f, *args)
+			return last_ret
+		return wrap
+	return decorator
 
 class syntax_highlight:
 	def __init__(self, emma_instance):
@@ -41,12 +74,23 @@ class syntax_highlight:
 
 		self.load_config()
 
-		self.install_toolbar_item("query_toolbar", gtk.STOCK_INDENT, "do SH", self.do_sh)
+		#self.install_toolbar_item("query_toolbar", gtk.STOCK_INDENT, "do SH", self.do_sh)
+		
 		q = self.emma.current_query
+		buffer = self.buffer = q.textview.get_buffer()
+		self.populate_buffer(buffer)
+		buffer.connect("changed", self.buffer_changed)
+		
 		if sys.stdout.debug:
 			# check if we are running with debug output - enable example text
-			self.set_query_text(q, """select * from user;""")
-			self.do_sh(None)
+			self.set_query_text(q, """select * 
+from user 
+where 
+a = "string" 
+or b = 'single' 
+order by rand() 
+limit 10 ;""")
+		self.buffer_changed(buffer)
 
 	def cleanup(self):
 		for item, toolbar in self.toolbar_items:
@@ -54,7 +98,7 @@ class syntax_highlight:
 			del item
 
 	def load_config(self):
-		self.keywords = "select,from,where,limit,left,right,inner,outer,join,order,by"
+		self.keywords = "select,from,where,limit,left,right,inner,outer,join,order,by,and,or,not"
 		self.keywords = set(self.keywords.split(","))
 		
 	def install_toolbar_item(self, toolbar_name, stock, item_catpion, callback):
@@ -75,9 +119,8 @@ class syntax_highlight:
 		buffer = q.textview.get_buffer()
 		buffer.set_text(text)
 
-	def do_sh(self, button):
-		buffer = self.emma.current_query.textview.get_buffer()
-		self.populate_buffer(buffer)
+	@max_frequency(1)
+	def buffer_changed(self, buffer):
 		start, end = buffer.get_bounds()
 		buffer.remove_all_tags(start, end)
 
@@ -87,17 +130,22 @@ class syntax_highlight:
 		  end   = buffer.get_iter_at_line_offset (erow-1, ecol)
 		  buffer.apply_tag_by_name (tag, start, end)
 
+
 	def populate_buffer (self, buffer):
 		tags = (
 			("keyword", "#0000ff"),
-			("string",  "#004488"),
+			("string",  "#AA0000"),
 			("comment", "#009900"),
 			("constant","#e07818"))
+		start, end = buffer.get_bounds()
+		buffer.remove_all_tags(start, end)
+		tt = buffer.get_tag_table()
 		for name, color in tags:
-			try:
-				buffer.create_tag("sql_%s" % name,  foreground=color)
-			except:
-				pass
+			name = "sql_%s" % name
+			tag = tt.lookup(name)
+			if tag:
+				tt.remove(tag)
+			buffer.create_tag(name,  foreground=color)
 
 	def scan (self, code):
 		fp = StringIO.StringIO (code)
@@ -107,7 +155,7 @@ class syntax_highlight:
 		try:
 			for type, text, (srow, scol), (erow, ecol), line in tokenize.generate_tokens(fp.readline):
 				tag = None
-				print text
+				#print type, text
 				if type == tokenize.NAME and text in self.keywords:
 					tag = "sql_keyword"
 
