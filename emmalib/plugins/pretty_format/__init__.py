@@ -324,6 +324,7 @@ select * from user;
 					output.write(kw(token))
 				else:
 					output.write(token)
+				output.write(" ")
 				p = e
 				continue
 
@@ -335,6 +336,10 @@ select * from user;
 					p = e
 					current_state = "tables"
 					continue
+				if token.lower() == "as":
+					output.write(" %s " % kw(token))
+					p = e
+					continue
 				output.write(token)
 				if token == ",":
 					output.write("\n\t")
@@ -343,7 +348,7 @@ select * from user;
 
 
 			if current_statement == "select" and current_state == "tables":
-				if token.lower() in "join,left,right,inner".split(","):
+				if token.lower() in "join,left,right,inner,as".split(","):
 					output.write(" %s " % kw(token))
 				else:
 					output.write(token)

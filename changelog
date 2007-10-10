@@ -1,4 +1,5 @@
 emma (0.7) unstable; urgency=low
+  * Matias A. Bellone: patch pretty format "as" handling
   * support packaging environments without gtk
   * theme is disabled per default (use_theme config option)
   * changelog file uses latin1 encoding
