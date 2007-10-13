@@ -172,7 +172,7 @@ class pretty_format:
 		self.install_toolbar_item("query_toolbar", gtk.STOCK_INDENT, "pretty format query", self.on_pretty_format)
 		self.install_toolbar_item("query_toolbar", gtk.STOCK_UNINDENT, "compress query", self.on_compress)
 		q = self.emma.current_query
-		if sys.stdout.debug:
+		if sys.stdout.debug and 0:
 			# check if we are running with debug output - enable example text
 			print "\n\n\n"
 			self.set_query_text(q, """# this is the pretty format test query. click the "pretty format" or "compress query" button in the query-toolbar.
@@ -213,243 +213,62 @@ select * from user;
 		q = self.emma.current_query
 		text = self.get_query_text(q)
 		print "input: %r" % text
+		try:
+			sql = reload(self.emma.sql)
+		except:
+			print traceback.format_exc()
+			return
+		try:
+			r = sql.grammer.parseString(text)
+			#r = sql.field_list.parseString(text)
+		except:
+			print sys.exc_type, sys.exc_value
+			print sys.exc_value.__dict__
+			return
+
 		output = cStringIO.StringIO()
-		keyword_normalisation = "u"
-
-		def starts_with(t, s, p):
-			print repr(t[p:p + len(s)].lower())
-			if t[p:p + len(s)].lower() == s:
-				return t[p:p + len(s)]
-			return None
-
-		def kw(s):
-			if keyword_normalisation == "uppercase":
-				return s.upper()
-			if keyword_normalisation == "lowercase":
-				return s.lower()
-			return s
-
-		p = 0
-		current_statement = None
-		current_state = None
-		tl = len(text)
-		token = None
-		while p < tl:
-			tt, token, e = get_token(text, p)
-			if not token:
-				break
-			print "got token      %-60.60r of type %r at %s %s" % (token, tt, current_statement, current_state)
-
-			if tt == "function call":
-				# uniform pretty print a function call
-				token = pretty_print_function_call(token)
-
-			if token.startswith("#"):
-				# comment line. skipping to eol
-				e = text.find("\n", e)
-				if e == -1:
-					# last line
-					break
-				p = e
-				continue
-			if token.startswith("/*"):
-				# comment line. skipping to eol
-				e = text.find("*/", p)
-				if e == -1:
-					break
-				p = e + 2
-				continue
-
-			if token == ";":
-				# new query
-				current_statement = None
-				current_state = None
-				output.write(token)
-				output.write("\n")
-				p = e
-				continue;
-				
-			if token.lower() == "select":
-				
-				# start of select statement!
-				output.write(kw(token))
-				output.write("\n\t")
-				p = e
-				current_statement = "select"
-				current_state = "fields"
-				continue
-
-			if token.lower() == "limit":
-				output.write("\n")
-				output.write(kw(token))
-				output.write("\n\t")
-				current_statement = "limit"
-				p = e
-				continue
-
-			if current_statement == "limit":
-				output.write(token)
-				if token == ",":
-					output.write(" ")
-				p = e
-				continue
-
-			if token.lower() == "order":
-				output.write("\n")
-				output.write(kw(token))
-				output.write(" ") # wait for by :)
-				p = e
-				current_statement = "order"
-				continue
-
-			if token.lower() == "by":
-				output.write(kw(token))
-				output.write("\n\t")
-				current_state = "order_fields"
-				order_dir = None
-				p = e
-				continue
-
-			if token.lower() in ("where", "on"):
-				output.write("\n")
-				output.write(kw(token))
-				output.write("\n\t")
-				current_statement = "where"
-				p = e
-				continue
-
-			if current_statement == "where":
-				if token.lower() in ("and", "or"):
-					output.write("\n\t")
-					output.write(kw(token))
+		def do(token, depth=0, do_newline=True):
+			for t in token:
+				if type(t) == str:
+					if do_newline and t not in ("(", ")"):
+						output.write("\t" * depth)
+					elif do_newline and t in ("(", ")"):
+						output.write("\t" * (depth - 1))
+					elif t not in (",", "left join"):
+						output.write(" ")
+					elif t in ("left join"):
+						output.write("\n" + "\t" * (depth - 1))
+					output.write(t)
+					if t in (",", "(", "select", "from", "left join", "where"):
+						output.write("\n")
+						do_newline = True
+					else:
+						do_newline = False
 				else:
-					output.write(token)
-				output.write(" ")
-				p = e
-				continue
-
-			if current_statement == "select" and current_state == "fields":
-				if token.lower() == "from":
-					output.write("\n")
-					output.write(kw(token))
-					output.write("\n\t")
-					p = e
-					current_state = "tables"
-					continue
-				if token.lower() == "as":
-					output.write(" %s " % kw(token))
-					p = e
-					continue
-				output.write(token)
-				if token == ",":
-					output.write("\n\t")
-				p = e
-				continue
-
-
-			if current_statement == "select" and current_state == "tables":
-				if token.lower() in "join,left,right,inner,as".split(","):
-					output.write(" %s " % kw(token))
-				else:
-					output.write(token)
-					if token == ",":
-						output.write("\n\t")
-				p = e
-				continue
-			if current_statement == "order":
-				if token.lower() == "desc" or token.lower() == "asc":
-					output.write(" ")
-					output.write(kw(token))
-				else:
-					output.write(token)
-				if token == ",":
-					output.write("\n\t")
-				p = e
-				continue
-					
-			break
-		while True:
-			break
-			o = strspn(text, " \r\n\t", p)
-			print "span  : ", o
-			s = p + o
-			print "start: %r" % text[s:]
-
-
-			break
-		self.set_query_text(q, output.getvalue())
+					do_newline = do(t, depth + 1, do_newline)
+			output.write("\n")
+			return True
+		pprint.pprint(r)
+		do(r)
+		print output.getvalue()
+		
+		#self.set_query_text(q, output.getvalue())
 
 	def on_compress(self, button):
 		q = self.emma.current_query
 		text = self.get_query_text(q)
 		print "input: %r" % text
-		output = cStringIO.StringIO()
-		keyword_normalisation = "u"
+		
+		#keywords = "select,from,left,join,right,inner,where,and,or,on,order,by,having,group,limit,union,distinct"
+		#if tt == "function call":
+		try:
+			r = self.emma.sql.grammer.parseString(code)
+		except:
+			print sys.exc_type, sys.exc_value
+			return
 
-		def kw(s):
-			if keyword_normalisation == "uppercase":
-				return s.upper()
-			if keyword_normalisation == "lowercase":
-				return s.lower()
-			return s
-
-
-		p = 0
-		tl = len(text)
-		token = None
-		keywords = "select,from,left,join,right,inner,where,and,or,on,order,by,having,group,limit,union,distinct"
-		keywords = keywords.split(",")
-		token = None
-		last_token = token
-		while p < tl:
-			tt, token, e = get_token(text, p)
-			if not token:
-				break
-			print "token     : %r last_token: %r" % (token, last_token)
-
-			if tt == "function call":
-				# uniform pretty print a function call
-				token = pretty_print_function_call(token, compressed=True)
-
-			if token.startswith("#"):
-				# comment line. skipping to eol
-				e = text.find("\n", e)
-				if e == -1:
-					# last line
-					break
-				p = e
-				continue
-
-			if token.startswith("/*"):
-				# comment line. skipping to eol
-				e = text.find("*/", p)
-				if e == -1:
-					break
-				p = e + 2
-				continue
-
-			if token == ";":
-				# new query
-				current_statement = None
-				current_state = None
-				output.write(token)
-				output.write("\n")
-				last_token = token
-				p = e
-				continue;
-
-			if token not in ",=" and last_token != None and last_token not in ",=;":
-				output.write(" ")
-				
-			if token.lower() in keywords:
-				output.write(kw(token))
-				p = e
-				last_token = token
-				continue
-			output.write(token)
-			p = e
-			last_token = token
-		self.set_query_text(q, output.getvalue())
+		output = []
+		#self.set_query_text(q, output.getvalue())
 
 		
 plugin_instance = None	
