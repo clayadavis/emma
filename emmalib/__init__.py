@@ -242,21 +242,28 @@ class Emma:
 		self.on_closequery_button_clicked(None)
 		
 	def load_plugins(self):
+		def _load(plugin_name):
+			if plugin_name in self.plugins:
+				#print "reloading plugin", plugin_name, "...",
+				plugin = reload(self.plugins[plugin_name])
+			else:
+				#print "loading plugin", plugin_name, "...",
+				plugin = __import__(plugin_name)
+			self.plugins[plugin_name] = plugin
+			ret = self.init_plugin(plugin)
+			#print "done", ret
+
 		for path in self.plugin_pathes:
 			for plugin_name in os.listdir(path):
 				plugin_dir = os.path.join(path, plugin_name)
 				if not os.path.isdir(plugin_dir) or plugin_name[0] == ".":
 					continue
-				if plugin_name in self.plugins:
-					#print "reloading plugin", plugin_name, "...",
-					plugin = reload(self.plugins[plugin_name])
-				else:
-					#print "loading plugin", plugin_name, "...",
-					plugin = __import__(plugin_name)
-				self.plugins[plugin_name] = plugin
-				ret = self.init_plugin(plugin)
-				#print "done", ret
-		
+				try:
+					_load(plugin_name)
+				except:
+					print "could not load plugin %r:\n%s" % (
+						plugin_name,
+						traceback.format_exc())
 	def unload_plugins(self):
 		""" not really an unload - i just asks the module to cleanup """
 		for plugin_name, plugin in self.plugins.iteritems():
