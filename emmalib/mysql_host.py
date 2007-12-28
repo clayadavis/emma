@@ -91,9 +91,9 @@ class mysql_host:
 
 		try:
 			self.handle = _mysql.connect(**c)
-		except _mysql_exceptions.OperationalError:
+		except: #  _mysql_exceptions.OperationalError:
 			self.connected = False
-			self.msg_log("%s: %s" % (sys.exc_type, sys.exc_value[1]))
+			self.msg_log("%s: %s" % (sys.exc_type, sys.exc_value))
 			return
 		self.connected = True
 		self.refresh()

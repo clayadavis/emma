@@ -20,6 +20,7 @@
 import pango
 import gtk
 import traceback
+import gtksourceview
 
 class mysql_query_tab:
 	def __init__(self, xml, nb):
@@ -40,10 +41,70 @@ class mysql_query_tab:
 			"page": "first_query",
 			"query_bottom_label": "query_bottom_label",
 			"query_db_label": "query_db_label",
+			"query_text_sw": "query_text_sw",
+			"toolbar": "inner_query_toolbar"
 		}
 		
 		for attribute, xmlname in renameload.iteritems():
 			self.__dict__[attribute] = xml.get_widget(xmlname)
+
+		self.toolbar.set_style(gtk.TOOLBAR_ICONS)
+
+		# replace textview with gtksourcevice
+		try:
+			org_tv = self.textview
+			manager = gtksourceview.SourceLanguagesManager()
+			language = manager.get_language_from_mime_type("text/x-sql")
+
+			sb = gtksourceview.SourceBuffer()
+			sb.set_language(language)
+			sv = self.textview = gtksourceview.SourceView(sb)
+
+			self.query_text_sw.remove(org_tv)
+			self.query_text_sw.add(sv)
+			sv.show()
+
+			# sv config
+			for pt, pn, pd in (
+				(bool, "show_line_numbers", True),
+				(bool, "show_line_markers", False),
+				(int, "tabs_width", 4),
+				(bool, "auto_indent", True),
+				(bool, "insert_spaces_instead_of_tabs", False),
+				(bool, "show_margin", True),
+				(int, "margin", 80),
+				(bool, "smart_home_end", True)):
+
+				cn = "sourceview.%s" % pn
+				try:
+					v = self.emma.config[cn]
+					if pt == bool:
+						v = v == "1" or v.lower() == "true" or v.lower() == "yes"
+					else:
+						v = pt(v)
+				except:
+					v = pd
+				method = getattr(sv, "set_%s" % pn)
+				method(v)				
+			# sb config
+			for pt, pn, pd in (
+				(bool, "check_brackets", True),
+				(bool, "highlight", True),
+				(int, "max_undo_levels", 15)):
+				
+				cn = "sourceview.%s" % pn
+				try:
+					v = self.emma.config[cn]
+					if pt == bool:
+						v = v == "1" or v.lower() == "true" or v.lower() == "yes"
+					else:
+						v = pt(v)
+				except:
+					v = pd
+				method = getattr(sb, "set_%s" % pn)
+				method(v)
+		except:
+			print "error inserting gtksourceview:\n%s" % traceback.format_exc()
 			
 		self.current_host = None
 		self.current_db = None

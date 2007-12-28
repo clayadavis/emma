@@ -26,6 +26,7 @@ import gc
 import pickle
 import datetime
 import bz2
+import sql
 
 if __name__ != "__main__":
 	from emmalib import __file__ as emmalib_file
@@ -77,6 +78,8 @@ last_update = 0
 
 class Emma:
 	def __init__(self):
+		self.emma_path = emma_path
+		self.sql = sql
 		self.created_once = {}
 		self.query_changed_listener = []
 		self.query_count = 0
@@ -387,51 +390,6 @@ class Emma:
 				break # found select
 		return result
 	
-	def read_expression(self, query, start=0, concat=True, update_function=None, update_offset=0, icount=0):
-		# r'(?is)("(?:[^\\]|\\.)*?")|(\'(?:[^\\]|\\.)*?\')|(`(?:[^\\]|\\.)*?`)|([^ \r\n\t]*[ \r\n\t]*\()|(\))|([0-9]+(?:\\.[0-9]*)?)|([^ \r\n\t,()"\'`]+)|(,)')
-		try:	r = self.query_expr_re
-		except: r = self.query_expr_re = re.compile(r"""
-			(?is)
-			("(?:[^\\]|\\.)*?")|			# double quoted strings
-			('(?:[^\\]|\\.)*?')|			# single quoted strings
-			(`(?:[^\\]|\\.)*?`)|			# backtick quoted strings
-			(/\*.*?\*/)|					# c-style comments
-			(\#.*$)|						# shell-style comments
-			(\))|							# closing parenthesis 
-			([0-9]+(?:\\.[0-9]*)?)|			# numbers
-			([,;])|							# comma or semicolon
-			([^ \r\n\t\(\)]*[ \r\n\t]*\()|	# opening parenthesis with leading whitespace
-			([^ \r\n\t,;()"'`]+)			# everything else...
-		""", re.VERBOSE)
-		
-		# print "read expr in", query
-		match = r.search(query, start)
-		#if match: print match.groups()
-		if not match: return (None, None)
-		for i in range(1, match.lastindex + 1):
-			if match.group(i): 
-				t = match.group(i)
-				e = match.end(i)
-				current_token = t
-				if current_token[len(current_token) - 1] == "(":
-					while 1:
-						icount += 1
-						if update_function is not None and icount >= 10:
-							icount = 0
-							update_function(False, update_offset + e)
-						#print "at", [query[e:e+15]], "..."
-						exp, end = self.read_expression(query, e, False, update_function, update_offset, icount)
-						#print "got inner exp:", [exp]
-						if not exp: break
-						e = end
-						if concat: 
-							t += " " + exp
-						if exp == ")": 
-							break
-						
-				return (t, e)
-		print "should not happen!"
-		return (None, None)
 		
 	def get_order_from_query(self, query, return_before_and_after=False):
 		current_order = []
@@ -2100,77 +2058,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		return
 		
 	def on_mainwindow_key_release_event(self, window, event):
-		#print "state: %d, keyval: 0x%04x, text: '%s'" % (event.state, event.keyval, event.string)
-		
-		#~ RefPtr<Gnome::Glade::Xml> xml = queries[current_query].xml;
-		#~ xml_get_decl_widget_from(xml, local_search_button, Gtk::ToolButton);
-			
-		#~ if(event->keyval == GDK_Tab) {
-			#~ return do_auto_completion();
-		#~ } else 
-		#if event.keyval == keysyms.F9 or (event.state == 4 and event.keyval == keysyms.Return):
-		#	self.on_execute_query_clicked(None)
-		#	return True
-		#~ } else if(event->keyval == GDK_F6) {
-			#~ query_notebook->set_current_page((current_query + 1) % queries.size());
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_t) {
-			#~ new_query_tab();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_w) {
-			#~ close_query_tab();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_s) {
-			#~ on_save_query();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_o) {
-			#~ on_load_query();
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_p) {
-			#~ on_pretty_format();
-			#~ return true;
 		if event.keyval == keysyms.F3:
 			self.on_local_search_button_clicked(None, True)
 			return True
-		#~ } else if(event->state & 4 && event->keyval == GDK_u) {
-			#~ xml_get_decl_widget_from(xml, query_text, Gtk::TextView);
-			
-			#~ TextBuffer::iterator start, end;
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ string text = query_text->get_buffer()->get_text(start, end);
-			#~ text = to_lower(text);
-			#~ query_text->get_buffer()->erase_selection();
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ query_text->get_buffer()->insert(start, text);
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ start = end;
-			#~ end.backward_chars(text.size());
-			#~ query_text->get_buffer()->select_range(start, end);
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval == GDK_U) {
-			#~ xml_get_decl_widget_from(xml, query_text, Gtk::TextView);
-			
-			#~ TextBuffer::iterator start, end;
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ string text = to_upper(query_text->get_buffer()->get_text(start, end));
-			#~ query_text->get_buffer()->erase_selection();
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ query_text->get_buffer()->insert(start, text);
-			#~ query_text->get_buffer()->get_selection_bounds(start, end);
-			#~ start = end;
-			#~ end.backward_chars(text.size());
-			#~ query_text->get_buffer()->select_range(start, end);
-			
-			#~ return true;
-		#~ } else if(event->state & 4 && event->keyval >= GDK_0 && event->keyval <= GDK_9) {
-			#~ int page = event->keyval - GDK_0;
-			#~ if(page == 0) page = 10;
-			#~ page--;
-			#~ if(page < query_notebook->get_n_pages())
-				#~ query_notebook->set_current_page(page);
-			#~ // on_parse_query("vos2sql");
-		#~ }
-		#~ return false;
 		
 	def on_query_view_key_press_event(self, tv, event):
 		q = self.current_query
@@ -3062,6 +2952,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		keys = self.config.keys()
 		keys.sort()
 		toolbar = self.xml.get_widget("query_toolbar")
+		toolbar.set_style(gtk.TOOLBAR_ICONS)
 		for child in toolbar.get_children():
 			if not child.name.startswith("template_"):
 				continue
@@ -3354,6 +3245,53 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		for field in table.field_order:
 			i = self.connections_model.append(iter, (table.fields[field],))
 
+	def read_expression(self, query, start=0, concat=True, update_function=None, update_offset=0, icount=0):
+		## TODO!
+		# r'(?is)("(?:[^\\]|\\.)*?")|(\'(?:[^\\]|\\.)*?\')|(`(?:[^\\]|\\.)*?`)|([^ \r\n\t]*[ \r\n\t]*\()|(\))|([0-9]+(?:\\.[0-9]*)?)|([^ \r\n\t,()"\'`]+)|(,)')
+		try:	r = self.query_expr_re
+		except: r = self.query_expr_re = re.compile(r"""
+			(?is)
+			("(?:[^\\]|\\.)*?")|			# double quoted strings
+			('(?:[^\\]|\\.)*?')|			# single quoted strings
+			(`(?:[^\\]|\\.)*?`)|			# backtick quoted strings
+			(/\*.*?\*/)|					# c-style comments
+			(\#.*$)|						# shell-style comments
+			(\))|							# closing parenthesis 
+			([0-9]+(?:\\.[0-9]*)?)|			# numbers
+			([,;])|							# comma or semicolon
+			([^ \r\n\t\(\)]*[ \r\n\t]*\()|	# opening parenthesis with leading whitespace
+			([^ \r\n\t,;()"'`]+)			# everything else...
+		""", re.VERBOSE)
+		
+		# print "read expr in", query
+		match = r.search(query, start)
+		#if match: print match.groups()
+		if not match: return (None, None)
+		for i in range(1, match.lastindex + 1):
+			if match.group(i): 
+				t = match.group(i)
+				e = match.end(i)
+				current_token = t
+				if current_token[len(current_token) - 1] == "(":
+					while 1:
+						icount += 1
+						if update_function is not None and icount >= 10:
+							icount = 0
+							update_function(False, update_offset + e)
+						#print "at", [query[e:e+15]], "..."
+						exp, end = self.read_expression(query, e, False, update_function, update_offset, icount)
+						#print "got inner exp:", [exp]
+						if not exp: break
+						e = end
+						if concat: 
+							t += " " + exp
+						if exp == ")": 
+							break
+						
+				return (t, e)
+		print "should not happen!"
+		return (None, None)
+		
 class output_handler:
 	def __init__(self, print_stdout=False, log_file=None, log_flush=False):
 		self.stdout = sys.stdout
@@ -3430,4 +3368,4 @@ def start(args):
 
 if __name__ == "__main__":
 	sys.exit(start(sys.argv[1:]))
-                                                                                                                                                                                                                                                                                                  
+

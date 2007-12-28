@@ -25,6 +25,8 @@ import gobject
 import pprint
 import re
 import cStringIO
+import copy
+import traceback
 
 def test(c, t, f):
 	if c:
@@ -221,38 +223,186 @@ select * from user;
 		try:
 			r = sql.grammer.parseString(text)
 			#r = sql.field_list.parseString(text)
+			#
+		except sql.ParseException, err:
+			msg = str(err)
+			msg, rest, rest = msg.rsplit("(", 2)
+			print "can't understand your sql query:", msg
+			print err.line
+			print " "*(err.column-1) + "^"
+			q = self.emma.current_query
+			b = q.textview.get_buffer()
+			i = b.get_iter_at_line_offset(err.lineno - 1, err.column - 1)
+			b.place_cursor(i)
+			q.label.set_text("can't understand your query: %s" % msg)			
+			return
 		except:
 			print sys.exc_type, sys.exc_value
 			print sys.exc_value.__dict__
 			return
 
 		output = cStringIO.StringIO()
-		def do(token, depth=0, do_newline=True):
-			for t in token:
+		def do(token, depth=0, do_newline=True, parents=[]):
+			print "do", token
+			next_parent = None
+			for index, t in enumerate(token):
 				if type(t) == str:
 					if do_newline and t not in ("(", ")"):
+						output.write("\n")
 						output.write("\t" * depth)
 					elif do_newline and t in ("(", ")"):
+						output.write("\n")
 						output.write("\t" * (depth - 1))
 					elif t not in (",", "left join"):
 						output.write(" ")
 					elif t in ("left join"):
 						output.write("\n" + "\t" * (depth - 1))
+					#output.write(str(parents) + ":" + t)
 					output.write(t)
+					next_parent = t
 					if t in (",", "(", "select", "from", "left join", "where"):
-						output.write("\n")
 						do_newline = True
 					else:
 						do_newline = False
 				else:
-					do_newline = do(t, depth + 1, do_newline)
-			output.write("\n")
-			return True
-		pprint.pprint(r)
-		do(r)
-		print output.getvalue()
+					inner_parent = copy.copy(parents)
+					inner_parent.append(next_parent)
+					if index != 0: # first in group is again a new group
+						next_depth = depth + 1
+					else:
+						next_depth = depth
+					do(t, next_depth, do_newline, inner_parent)
+					if next_parent != None:
+						do_newline = True
+			return
+
+		self.out = output
+		self.format_stack = []
+		pprint.pprint(r.__dict__)
+		self.format(r[0])
+		print "-------" + ",".join(self.format_stack)
+		print self.out.getvalue() + "<--"
+		print "-------"
 		
 		#self.set_query_text(q, output.getvalue())
+
+	def format_select(self, tokens, depth=0, at_new_line=True):
+		for t in tokens:
+			if type(t) == str:
+				self.out.write("\t" * depth)
+				self.out.write(t)
+				self.out.write("\n")
+			else:
+				self.format(t, depth+1, at_new_line=True)
+
+	def format_field_list(self, tokens, depth=0, at_new_line=True):
+		for t in tokens:
+			if type(t) == str:
+				self.out.write("\t" * depth)
+				self.out.write(t)
+				self.out.write("\n")
+				at_new_line = True
+			else:
+				self.format(t, depth, at_new_line=at_new_line)
+
+	def format_where_clause(self, tokens, depth=0, at_new_line=True):
+		print "where clause:", len(tokens), tokens
+		# lisp style list
+		# (exp op (exp op (exp)))
+		l = tokens
+		while True:
+			exp = l[0]
+			print "exp:", len(exp), exp
+
+			if len(l) < 3:
+				break
+			op = l[1]
+			print "op:", op
+			l = l[2][1:] # next
+	def format_tables(self, tokens, depth=0, at_new_line=True):
+		skip = 0
+		for i, t in enumerate(tokens):
+			if skip:
+				skip -= 1
+				continue
+			last_table = i == len(tokens) - 1
+			if not last_table:
+				next_token = tokens[i + 1]
+			else:
+				next_token = None
+			if type(t) != str:
+				# table grouping
+				print "table grouping:", t
+				if len(t) > 1:
+					self.out.write("\t" * depth)
+					self.out.write("(\n")
+					print "table grouping", t
+					self.format_tables(t, depth + 1, at_new_line=True)
+					self.out.write("\t" * depth)
+					self.out.write(")\n")
+					continue
+				t = t[0]
+			if t == "left join":
+				self.out.write("\t" * (depth - 1))
+				self.out.write(t)
+				self.out.write("\n")
+				continue
+			if t == "on":
+				self.out.write("\t" * (depth - 1))
+				self.out.write(t)
+				self.out.write("\n")
+				skip = 1
+				if len(next_token) > 2:
+					self.out.write("\t" * (depth) + "(")					
+				self.format(next_token, depth + 1, at_new_line=True)
+				if len(next_token) > 2:
+					self.out.write("\t" * (depth) + ")")
+				self.out.write("\n")
+				continue
+			# normal table name
+			self.out.write("\t" * depth)
+			self.out.write(t)
+			if not last_table and next_token not in ("on", ):
+				self.out.write(",")
+			self.out.write("\n")
+			at_new_line = True
+
+	def format_subselect(self, tokens, depth=0, at_new_line=True):
+		for t in tokens:
+			if type(t) == str:
+				if at_new_line:
+					self.out.write("\t" * depth)
+				self.out.write(t)
+				self.out.write("\n")
+				at_new_line = True
+			else:
+				self.format(t, depth+1, at_new_line=True)
+
+	def format_function(self, tokens, depth=0, at_new_line=True):
+		if at_new_line:
+			self.out.write("\t" * depth)
+		for t in tokens:
+			if type(t) == str:
+				self.out.write(t)
+			else:
+				self.format(t, depth+1)
+		output.write("\n")
+
+	def format(self, tokens, depth=0, at_new_line=True):
+		print "-------" + ",".join(self.format_stack)
+		print self.out.getvalue() + "<--"
+		print "-------"
+		
+		method = "format_%s" % tokens[0][2:]
+		print "format", tokens[0][2:], tokens[1:]
+		self.format_stack.append(tokens[0][2:])
+		try:
+			method = getattr(self, method)
+			method(tokens[1:], depth, at_new_line)
+		except:
+			print traceback.format_exc()
+			raise ValueError("don't know how to continue with type %r" % tokens)
+		del self.format_stack[-1]
 
 	def on_compress(self, button):
 		q = self.emma.current_query
