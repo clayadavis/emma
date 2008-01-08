@@ -2126,6 +2126,16 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				new_tables = db.refresh()
 				self.redraw_db(db, self.get_db_iter(db), new_tables)
 				self.redraw_tables()
+		elif what == "check_table":
+			self.current_host = table.db.host
+			self.current_host.select_database(table.db)
+			self.xml.get_widget("main_notebook").set_current_page(4)
+			self.on_execute_query_clicked(None, "check table `%s`" % table.name)
+		elif what == "repair_table":
+			self.current_host = table.db.host
+			self.current_host.select_database(table.db)
+			self.xml.get_widget("main_notebook").set_current_page(4)
+			self.on_execute_query_clicked(None, "repair table `%s`" % table.name)
 				
 	def on_db_popup(self, item):
 		path, column = self.connections_tv.get_cursor()
@@ -2151,6 +2161,20 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				new_tables = db.refresh()
 				self.redraw_db(db, self.get_db_iter(db), new_tables)
 				self.redraw_tables()
+		elif what == "check_tables":
+			self.current_host = db.host
+			self.current_host.select_database(db)
+			self.xml.get_widget("main_notebook").set_current_page(4)
+			self.on_execute_query_clicked(
+				None, 
+				"check table %s" % (",".join(map(lambda s: "`%s`" % s, db.tables.keys()))))
+		elif what == "repair_tables":
+			self.current_host = db.host
+			self.current_host.select_database(db)
+			self.xml.get_widget("main_notebook").set_current_page(4)
+			self.on_execute_query_clicked(
+				None, 
+				"repair table %s" % (",".join(map(lambda s: "`%s`" % s, db.tables.keys()))))
 	
 	def on_host_popup(self, item):
 		path, column = self.connections_tv.get_cursor()
