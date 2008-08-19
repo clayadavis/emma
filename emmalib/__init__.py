@@ -67,12 +67,10 @@ if os.path.isdir("emmalib"):
 	emma_share_path = "emmalib"
 	icons_path = "icons"
 	glade_path = emma_share_path
-	themes_path = os.path.join(sys.prefix, "share", "theme")
 else:
 	emma_share_path = os.path.join(sys.prefix, "share/emma/")
 	icons_path = os.path.join(emma_share_path, "icons")
 	glade_path = os.path.join(emma_share_path, "glade")
-	themes_path = os.path.join(sys.prefix, "share", "themes")
 
 last_update = 0
 
@@ -203,25 +201,12 @@ class Emma:
 					label.show()
 					self.query_notebook.append_page(new_page, label)
 
-		if self.config["theme"] and self.config["use_theme"].lower() == "true":
-			self.select_theme(self.config["theme"])
-
 		if int(self.config["ping_connection_interval"]) > 0:
 			gobject.timeout_add(
 				int(self.config["ping_connection_interval"]) * 1000,
 				self.on_connection_ping
 			)
 		self.init_plugins()
-
-	def select_theme(self, theme):
-		theme_file = os.path.join(theme, "gtk-2.0", "gtkrc")
-		if not os.access(theme_file, os.R_OK):
-			theme_file = os.path.join(themes_path, theme, "gtk-2.0", "gtkrc")
-			if not os.access(theme_file, os.R_OK):
-				print "could not load theme file: %r" % theme_file
-				return
-		print "loading theme file %r" % theme_file
-		gtk.rc_parse(theme_file)
 
 	def on_reload_plugins_activate(self, *args):
 		self.unload_plugins()
@@ -2892,8 +2877,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			"ask_execute_query_from_disk_min_size": "1024000",
 			"connect_timeout": "7",
 			"db_encoding": "latin1",
-			"use_theme": "false",
-			"theme": os.path.join(emma_share_path, "theme"),
 			"supported_db_encodings": 
 				"latin1 (iso8859-1, cp819); "
 				"latin2 (iso8859-2); "
@@ -3019,9 +3002,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			h.set_update_ui(self.redraw_host, iter) # call before init!
 			self.redraw_host(h, iter)
 			self.current_host = h
-
-	def on_reload_theme_activate(self, *args):
-		gtk.rc_reparse_all()
 
 	def on_query_bottom_eventbox_button_press_event(self, ebox, event):
 		self.xml.get_widget("query_encoding_menu").popup(None, None, None, event.button, event.time);
