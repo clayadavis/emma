@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.4
+#!/usr/bin/env python
 import os
 import os.path
 import sys
@@ -18,7 +18,7 @@ setup(name="emma",
       description="emma is the extendable mysql managing assistant",
       author="Florian Schmidt",
       author_email="flo@fastflo.de",
-      url="http://emma.sourceforge.net",
+      url="http://emma.fastflo.de",
       scripts=['emma'],
 	  package_dir={'emmalib': 'emmalib'},
       packages=[
