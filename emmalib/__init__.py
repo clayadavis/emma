@@ -48,7 +48,7 @@ except:
 
 import pprint
 
-version = "0.6"
+version = "0.7"
 new_instance = None
 our_module = None
 

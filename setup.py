@@ -25,7 +25,6 @@ setup(name="emma",
             'emmalib', 
             'emmalib.plugins.table_editor',
             'emmalib.plugins.pretty_format',
-            'emmalib.plugins.syntax_highlight'
       ],
       data_files=[
 		("share/emma/icons", icon_data),
