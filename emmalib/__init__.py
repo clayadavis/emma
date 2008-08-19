@@ -27,6 +27,7 @@ import pickle
 import datetime
 import bz2
 import sql
+import traceback
 
 if __name__ != "__main__":
 	from emmalib import __file__ as emmalib_file
@@ -88,7 +89,7 @@ class Emma:
 			print self.glade_file, "not found!"
 			sys.exit(-1)
 		
-		print "glade source file:", [self.glade_file]
+		print "glade source file: %r" % self.glade_file
 		self.xml = gtk.glade.XML(self.glade_file)
 		self.mainwindow = self.xml.get_widget("mainwindow")
 		self.mainwindow.connect('destroy', lambda *args: gtk.main_quit())
@@ -268,7 +269,7 @@ class Emma:
 		self.plugins = {}
 		for path in plugins_pathes:
 			if not os.path.isdir(path):
-				print "plugins-dir", path, "does not exist"
+				print "plugins-dir %r does not exist" % path
 				continue
 			if not path in sys.path:
 				sys.path.insert(0, path)
@@ -300,7 +301,7 @@ class Emma:
 			filename = "."
 		filename = filename + "/.emma"
 		if os.path.isfile(filename):
-			print "detected emma config file", filename, "converting to directory"
+			print "detected emma config file %r. converting to directory" % filename
 			temp_dir = filename + "_temp"
 			os.mkdir(temp_dir)
 			os.rename(filename, os.path.join(temp_dir, "emmarc"))
@@ -333,11 +334,8 @@ class Emma:
 		while iter:
 			host = self.connections_model.get_value(iter, 0)
 			if host.connected:
-				print "pinging %s" % host.name,
 				if not host.ping():
 					print "...error! reconnect seems to fail!"
-				else:
-					print "ok"
 			iter = self.connections_model.iter_next(iter)
 		return True
 		
@@ -518,7 +516,7 @@ class Emma:
 			except:
 				tries += 1
 				if tries > 1:
-					print "query not editable, because table '%s' is not found in db %s" % (table, self.current_host.current_db)
+					print "query not editable, because table %r is not found in db %r" % (table, self.current_host.current_db)
 					return (None, None, None, None, None)
 				new_tables = self.current_host.current_db.refresh()
 				continue
@@ -583,7 +581,7 @@ class Emma:
 				possible_key = "e.g.'%s' would be useful!" % possible_primary;
 			elif possible_unique:
 				possible_key = "e.g.'%s' would be useful!" % possible_unique;
-			print "no edit-key found. try to name a key-field in your select-clause.", possible_key
+			print "no edit-key found. try to name a key-field in your select-clause. (%r)" % possible_key
 			return (table, None, None, None, None)
 		
 		value = ""
@@ -594,7 +592,6 @@ class Emma:
 			if not where: where = None
 			if not col_num is None:
 				value = self.current_query.model.get_value(row_iter, col_num)
-				print col_num, fields
 				if wildcard:
 					field = th.field_order[col_num]
 				else:
@@ -603,7 +600,6 @@ class Emma:
 			where = possible_primary + possible_unique
 			
 		# get current edited field and value by col_num
-		#print "%s, %s, %s, %s, %s" % (table, where, field, value, row_iter)
 		if return_fields:
 			return table, where, field, value, row_iter, fields
 		return table, where, field, value, row_iter
@@ -724,7 +720,7 @@ class Emma:
 			where
 		)
 		if self.current_host.query(update_query, encoding=q.encoding):
-			print "set new value:", [new_value]
+			print "set new value: %r" % new_value
 			q.model.set_value(row_iter, col_num, new_value)
 			return True
 		return False
@@ -842,11 +838,11 @@ class Emma:
 				return False
 				
 			insert_id = self.current_host.insert_id()
-			print "insert id:", insert_id
+			print "insert id: %r" % insert_id
 			where_fields = map(lambda s: s.strip(), where.split(","))
-			print "where fields:", where_fields
-			print "select fields:", fields
-			print "from", [table, where, field, value, row_iter]
+			print "where fields: %r" % (where_fields, )
+			print "select fields: %r" % (fields, )
+			print "from %r" % ((table, where, field, value, row_iter), )
 			if not where_fields:
 				print "no possible key found to retrieve newly created record"
 			else:
@@ -868,7 +864,7 @@ class Emma:
 								value = "'%s'" % self.current_host.escape(value)
 					wc.append("%s=%s" % (self.escape_fieldname(field), value))
 				where = " and ".join(wc)
-				print "select where:", where
+				print "select where: %r" % where
 				if fields == ["*"]:
 					field_selector = "*"
 				else:
@@ -1150,7 +1146,7 @@ class Emma:
 			update_ui(False, fp.tell())
 			if not limit_db or found_db:
 				if exclude and exclude_regex.match(query):
-					print "skipping query", [query[0:80]]
+					print "skipping query %r" % query[0:80]
 				elif not host.query(query, True, append_to_log) and stop_on_error:
 					self.show_message("execute query from disk", "an error occoured. maybe remind the line number and press cancel to close this dialog!")
 					self.query_from_disk = False
@@ -1262,7 +1258,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
 			
 			# if stop on error is enabled
 			if not ret:
-				print [host.last_error]
+				print "mysql error: %r" % (host.last_error, )
 				message = "error at: %s" % host.last_error.replace("You have an error in your SQL syntax.  Check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
 				message = "error at: %s" % message.replace("You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ", "")
 				
@@ -1759,7 +1755,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			try:
 				f(q)
 			except:
-				print "query_change_listener", f, "had exception:", sys.exc_value
+				print "query_change_listener %r had exception:\n%s" % (
+					f, traceback.format_exc())
 	
 	def on_closequery_button_clicked(self, button):
 		if len(self.queries) == 1: return
@@ -2650,7 +2647,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			
 		try:
 			new_order = self.stored_orders[self.current_host.current_db.name][current_table.name]
-			print "found stored order", new_order
+			print "found stored order: %r" % (new_order, )
 			query = t
 			try:	r = self.query_order_re
 			except: r = self.query_order_re = re.compile(re_src_query_order)
@@ -2756,11 +2753,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		elif d == 3:
 			cell.set_property("pixbuf", self.icons["field"])
 		else:
-			print "unknown depth", d," for render_connections_pixbuf with object", o
+			print "unknown depth %r for render_connections_pixbuf with object %r" % (d, o)
 		
-	def on_new_file_activate(self, *args):
-	    print "new file", args
-
 	def render_connections_text(self, column, cell, model, iter):
 		d = model.iter_depth(iter)
 		o = model.get_value(iter, 0)
@@ -3115,7 +3109,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			try: 
 				self.icons[icon] = gtk.gdk.pixbuf_new_from_file(filename)
 			except: 
-				print "could not load", filename
+				print "could not load %r" % filename
 		self.mainwindow.set_icon(self.icons["emma"])
 		
 	def refresh_processlist(self, *args):
@@ -3188,9 +3182,6 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			table = db.tables[name]
 			self.tables_model.append(table.props)
 	
-	def redraw_entry(self, obj, iter):
-		print "do redraw", obj, iter
-		
 	def redraw_host(self, host, iter, expand = False):
 		#print "redraw host", host.name
 		if host.expanded: expand = True
@@ -3360,7 +3351,7 @@ def start(args):
 
 	e = Emma()
 
-	while 1:
+	while True:
 		gtk.main()
 		del e
 		if not new_instance: break
