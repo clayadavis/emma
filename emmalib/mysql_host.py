@@ -29,6 +29,90 @@ import re
 import traceback
 from mysql_db import *
 
+# as of mysql 5.1: http://dev.mysql.com/doc/mysqld-version-reference/en/mysqld-version-reference-reservedwords-5-1.html
+mysql_reserved_words = """
+ACCESSIBLE[a] 	ADD 	ALL
+ALTER 	ANALYZE 	AND
+AS 	ASC 	ASENSITIVE
+BEFORE 	BETWEEN 	BIGINT
+BINARY 	BLOB 	BOTH
+BY 	CALL 	CASCADE
+CASE 	CHANGE 	CHAR
+CHARACTER 	CHECK 	COLLATE
+COLUMN 	CONDITION 	CONNECTION[b]
+CONSTRAINT 	CONTINUE 	CONVERT
+CREATE 	CROSS 	CURRENT_DATE
+CURRENT_TIME 	CURRENT_TIMESTAMP 	CURRENT_USER
+CURSOR 	DATABASE 	DATABASES
+DAY_HOUR 	DAY_MICROSECOND 	DAY_MINUTE
+DAY_SECOND 	DEC 	DECIMAL
+DECLARE 	DEFAULT 	DELAYED
+DELETE 	DESC 	DESCRIBE
+DETERMINISTIC 	DISTINCT 	DISTINCTROW
+DIV 	DOUBLE 	DROP
+DUAL 	EACH 	ELSE
+ELSEIF 	ENCLOSED 	ESCAPED
+EXISTS 	EXIT 	EXPLAIN
+FALSE 	FETCH 	FLOAT
+FLOAT4 	FLOAT8 	FOR
+FORCE 	FOREIGN 	FROM
+FULLTEXT 	GOTO[c] 	GRANT
+GROUP 	HAVING 	HIGH_PRIORITY
+HOUR_MICROSECOND 	HOUR_MINUTE 	HOUR_SECOND
+IF 	IGNORE 	IN
+INDEX 	INFILE 	INNER
+INOUT 	INSENSITIVE 	INSERT
+INT 	INT1 	INT2
+INT3 	INT4 	INT8
+INTEGER 	INTERVAL 	INTO
+IS 	ITERATE 	JOIN
+KEY 	KEYS 	KILL
+LABEL[d] 	LEADING 	LEAVE
+LEFT 	LIKE 	LIMIT
+LINEAR 	LINES 	LOAD
+LOCALTIME 	LOCALTIMESTAMP 	LOCK
+LONG 	LONGBLOB 	LONGTEXT
+LOOP 	LOW_PRIORITY 	MASTER_SSL_VERIFY_SERVER_CERT[e]
+MATCH 	MEDIUMBLOB 	MEDIUMINT
+MEDIUMTEXT 	MIDDLEINT 	MINUTE_MICROSECOND
+MINUTE_SECOND 	MOD 	MODIFIES
+NATURAL 	NOT 	NO_WRITE_TO_BINLOG
+NULL 	NUMERIC 	ON
+OPTIMIZE 	OPTION 	OPTIONALLY
+OR 	ORDER 	OUT
+OUTER 	OUTFILE 	PRECISION
+PRIMARY 	PROCEDURE 	PURGE
+RANGE 	READ 	READS
+READ_ONLY[f] 	READ_WRITE[g] 	REAL
+REFERENCES 	REGEXP 	RELEASE
+RENAME 	REPEAT 	REPLACE
+REQUIRE 	RESTRICT 	RETURN
+REVOKE 	RIGHT 	RLIKE
+SCHEMA 	SCHEMAS 	SECOND_MICROSECOND
+SELECT 	SENSITIVE 	SEPARATOR
+SET 	SHOW 	SMALLINT
+SPATIAL 	SPECIFIC 	SQL
+SQLEXCEPTION 	SQLSTATE 	SQLWARNING
+SQL_BIG_RESULT 	SQL_CALC_FOUND_ROWS 	SQL_SMALL_RESULT
+SSL 	STARTING 	STRAIGHT_JOIN
+TABLE 	TERMINATED 	THEN
+TINYBLOB 	TINYINT 	TINYTEXT
+TO 	TRAILING 	TRIGGER
+TRUE 	UNDO 	UNION
+UNIQUE 	UNLOCK 	UNSIGNED
+UPDATE 	UPGRADE[h] 	USAGE
+USE 	USING 	UTC_DATE
+UTC_TIME 	UTC_TIMESTAMP 	VALUES
+VARBINARY 	VARCHAR 	VARCHARACTER
+VARYING 	WHEN 	WHERE
+WHILE 	WITH 	WRITE
+XOR 	YEAR_MONTH 	ZEROFILL
+ACCESSIBLE 	LINEAR 	MASTER_SSL_VERIFY_SERVER_CERT
+RANGE 	READ_ONLY 	READ_WRITE
+"""
+mysql_reserved_words = re.sub("\[.*?\]", "", mysql_reserved_words.strip())
+mysql_reserved_words = re.split("[ \r\n\t]+", mysql_reserved_words.lower())
+
 class mysql_host:
 	def __init__(self, *args):
 		if len(args) == 2:
@@ -95,10 +179,34 @@ class mysql_host:
 			self.connected = False
 			self.msg_log("%s: %s" % (sys.exc_type, sys.exc_value))
 			return
-		self.connected = True
+		self.connected = True		
+		self.version = self.handle.get_server_info()
+		if self.is_at_least_version("4.1.0"):
+			self.query("set names 'utf8'") # request utf8 encoded names and result!
+		self.query("show variables") # get server variables
+		result = self.handle.store_result()
+		self.variables = dict(result.fetch_row(0))
+		if self.is_at_least_version("4.1.3"):
+			self.charset = self.variables["character_set_server"]
+		else:
+			self.charset = "latin1" # use config default_charset as fallback!
+			print "using default_charset %r for this database" % (self.charset) 
+		#print "server variables:"
+		#import pprint
+		#pprint.pprint(self.variables)
 		self.refresh()
 		if self.database: self._use_db(self.database)
-		
+	def is_at_least_version(self, requested):
+		requested = map(int, requested.split("."))
+		real = self.version.replace("-", "_").split("_", 1)[0].split(".")
+		real = map(int, real)
+		for a, b in zip(requested, real):
+			if b > a:
+				return True
+			if b < a:
+				return False
+		return True
+
 	def ping(self):
 		try:
 			self.handle.ping()
@@ -129,10 +237,11 @@ class mysql_host:
 			start = time.time()
 			if encoding:
 				query = query.encode(encoding, "ignore")
+			print "executing query (encoding: %s): %r" % (encoding, query)
 			self.handle.query(query)
 			self.query_time = time.time() - start
 		except:
-			#print "error code:", sys.exc_value[0]
+			print "error executing query:\n%s" % traceback.format_exc()
 			try:
 				self.last_error = sys.exc_value[1]
 			except:
@@ -194,3 +303,34 @@ class mysql_host:
 			return s
 		return self.handle.escape_string(s)
 	
+	def escape_field(self, field):
+		# todo encode unicode strings here!
+		# if already encoded:
+		if "\x00" in field or "\0xff" in field:
+			raise Exception("found invalid character in identifier %r!" % field)
+		if field[-1] in " \r\t\n":
+			raise Exception("identifiers should not end in space chars! %r" % field)
+		if len(field) > 64:
+			raise Exception("field name too long: %r / %d" % (field, len(field)))
+		if field.lower() in mysql_reserved_words or re.search("[` ]", field) or field.isdigit():
+			rv = "`%s`" % field.replace("`", r"``")
+		else:
+			rv = field
+		print "escape field %r to %r" % (field, rv)
+		return rv
+		
+	def escape_table(self, table):
+		not_allowed = "".join(filter(lambda s: s, [
+			os.curdir,
+			os.pardir,
+			os.sep,
+			os.altsep,
+			os.extsep,
+			os.pathsep,
+			os.linesep]))
+		if set(table).intersection(set(not_allowed)):
+			raise Exception("before mysql 5.1.6 table names are not allowed to contain one of these chars: %r %r" % (not_allowed, table))
+		if len(table) > 64:
+			raise Exception("table name too long: %r / %d" % (table, len(table)))
+		return self.escape_field(table)
+		

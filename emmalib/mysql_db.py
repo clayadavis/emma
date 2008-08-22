@@ -25,6 +25,7 @@ class mysql_db:
 	def __init__(self, host, name = None):
 		self.handle = host.handle
 		self.host = host
+		self.charset = self.host.charset
 		if name != None:
 			self.name = name
 			self.expanded = False
@@ -45,6 +46,15 @@ class mysql_db:
 		
 	def refresh(self):
 		self.host.select_database(self)
+		if self.host.is_at_least_version("4.1.1"):
+			self.host.query("show variables like 'character_set_database'")
+			result = self.handle.store_result()
+			row = result.fetch_row()
+			self.charset = row[0][1]
+			print "using database charset %r" % (self.charset)
+		else:
+			self.charset = self.host.charset
+			print "using server charset %r for this database" % (self.charset)
 		if not self.host.query("show table status"): return
 		new_tables = []
 		

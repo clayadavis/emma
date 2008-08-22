@@ -75,6 +75,7 @@ else:
 
 last_update = 0
 
+
 class Emma:
 	def __init__(self):
 		self.emma_path = emma_path
@@ -89,7 +90,7 @@ class Emma:
 			print self.glade_file, "not found!"
 			sys.exit(-1)
 		
-		print "glade source file: %r" % self.glade_file
+		print "glade file: %r" % self.glade_file
 		self.xml = gtk.glade.XML(self.glade_file)
 		self.mainwindow = self.xml.get_widget("mainwindow")
 		self.mainwindow.connect('destroy', lambda *args: gtk.main_quit())
@@ -232,16 +233,13 @@ class Emma:
 		
 	def load_plugins(self):
 		def _load(plugin_name):
+			print "loading plugin %r" % plugin_name
 			if plugin_name in self.plugins:
-				#print "reloading plugin", plugin_name, "...",
 				plugin = reload(self.plugins[plugin_name])
 			else:
-				#print "loading plugin", plugin_name, "...",
 				plugin = __import__(plugin_name)
 			self.plugins[plugin_name] = plugin
 			ret = self.init_plugin(plugin)
-			#print "done", ret
-
 		for path in self.plugin_pathes:
 			for plugin_name in os.listdir(path):
 				plugin_dir = os.path.join(path, plugin_name)
@@ -460,11 +458,6 @@ class Emma:
 		print "found fields:", fields
 		return fields
 		
-	def escape_fieldname(self, field):
-		if not re.search("[` ]", field):
-			return field
-		return "`%s`" % field.replace("`", r"\`")
-		
 	def get_unique_where(self, query, path=None, col_num=None, return_fields=False):
 		# call is_query_appendable before!
 		result = self.is_query_appendable(query)
@@ -640,7 +633,7 @@ class Emma:
 			else:
 				new_order.append([c, o])
 		if col:
-			new_order.append([self.escape_fieldname(col), True])
+			new_order.append([self.current_host.escape_field(col), True])
 		try:	r = self.query_order_re
 		except: r = self.query_order_re = re.compile(re_src_query_order)
 		match = re.search(r, query)
@@ -660,7 +653,7 @@ class Emma:
 		order = ""
 		for col, o in new_order:
 			if order: order += ",\n\t"
-			order += col
+			order += self.current_host.escape_field(col)
 			if not o: order += " desc"
 		if order:
 			new_query = ''.join([before, addition, order, after])
@@ -713,9 +706,9 @@ class Emma:
 		table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 		if force_update == False and new_value == value:
 			return
-		update_query = u"update `%s` set `%s`='%s' where %s limit 1" % (
-			table, 
-			field, 
+		update_query = u"update %s set %s='%s' where %s limit 1" % (
+			self.current_host.escape_table(table), 
+			self.current_host.escape_field(field), 
 			self.current_host.escape(new_value), 
 			where
 		)
@@ -830,7 +823,7 @@ class Emma:
 			if query: query += ", "
 			if not value.isdigit():
 				value = "'%s'" % self.current_host.escape(value)
-			query += "%s=%s" % (self.escape_fieldname(field), value)
+			query += "%s=%s" % (self.current_host.escape_field(field), value)
 		if query: 
 			table, where, field, value, row_iter, fields = self.get_unique_where(q.last_source, return_fields=True)
 			update_query = "insert into `%s` set %s" % (table, query)
@@ -862,13 +855,13 @@ class Emma:
 							value = props[4]
 							if not value is None:
 								value = "'%s'" % self.current_host.escape(value)
-					wc.append("%s=%s" % (self.escape_fieldname(field), value))
+					wc.append("%s=%s" % (self.current_host.escape_field(field), value))
 				where = " and ".join(wc)
 				print "select where: %r" % where
 				if fields == ["*"]:
 					field_selector = "*"
 				else:
-					field_selector = ", ".join(map(self.escape_fieldname, fields))
+					field_selector = ", ".join(map(self.current_host.escape_field, fields))
 				self.current_host.query("select %s from `%s` where %s limit 1" % (field_selector, table, where))
 				result = self.current_host.handle.store_result().fetch_row(0)
 				if len(result) < 1:
@@ -1504,7 +1497,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
 		table_name = self.input(title, "please enter the name of the target table:", table_name)
 		if table_name is None:
 			return
-		table_name = self.escape_fieldname(table_name)
+		table_name = self.current_host.escape_table(table_name)
 		
 		output_row = None
 		try:
@@ -2509,7 +2502,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			if not current_table:
 				show_message("info", "no table selected!\nyou can't execute a template with $table$ in it, if you have no table selected!")
 				return
-			t = t.replace("$table$", self.escape_fieldname(current_table.name))
+			t = t.replace("$table$", self.current_host.escape_table(current_table.name))
 			
 		pos = t.find("$primary_key$")
 		if pos != -1:
@@ -2536,7 +2529,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					props = current_table.fields[name]
 					if props[3] != "PRI": continue
 					if primary_key: primary_key += " " + order_dir + ", "
-					primary_key += "`%s`" % self.escape_fieldname(name)
+					primary_key += self.current_host.escape_field(name)
 				if primary_key: 
 					replace = primary_key
 					break
@@ -2545,11 +2538,11 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 					props = current_table.fields[name]
 					if props[3] != "UNI": continue
 					if key: key +=  " " + order_dir + ", "
-					key += "`%s`" % self.escape_fieldname(name)
+					key += self.current_host.escape_field(name)
 				if key: 
 					replace = key
 					break
-				replace = "`%s`" % self.escape_fieldname(current_table.field_order[0])
+				replace = self.current_host.escape_field(current_table.field_order[0])
 				break
 			t = t.replace("$primary_key$", replace)
 			
@@ -2622,7 +2615,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				eval_kw = "eval: "
 				if value.startswith(eval_kw):
 					return "`%s` %s %s" % (field, op, value[len(eval_kw):])
-				return "`%s` %s '%s'" % (field, op, self.current_host.escape(value))
+				return "%s %s '%s'" % (self.current_host.escape_field(field), op, self.current_host.escape(value))
 			
 			conditions = "%s" % (
 				field_operator_value(
@@ -2668,7 +2661,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			order = ""
 			for col, o in new_order:
 				if order: order += ",\n\t"
-				order += col
+				order += self.current_host.escape_field(col)
 				if not o: order += " desc"
 			if order:
 				new_query = ''.join([before, addition, order, after])

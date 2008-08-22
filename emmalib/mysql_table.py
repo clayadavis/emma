@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-import sys, time
+import sys, time, os
 
 class mysql_table:
 	def __init__(self, db, props, props_description):
@@ -59,7 +59,7 @@ class mysql_table:
 			self.props_dict = dict(zip(map(lambda v: v[0], result.describe()), rows[0]))
 			self.name = self.props[0]
 		
-		self.host.query("describe `%s`" % self.name)
+		self.host.query("describe %s" % self.host.escape_table(self.name))
 		result = self.handle.store_result()
 		self.describe_headers = []
 		for h in result.describe():
