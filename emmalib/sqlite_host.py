@@ -140,15 +140,24 @@ class sqlite_result(object):
 class sqlite_handle(object):
 	def __init__(self, host, connection):
 		self.host = host
-		self.conneciton = connection
-		self.c = self.conneciton.cursor()
+		self.connection = connection
+		self.connection.isolation_level = None
+		self.c = self.connection.cursor()
 		self.stored_result = False
+
+	def affected_rows(self):
+		return 0 # todo
+
+	def insert_id(self):
+		return 0 # todo
 
 	def execute(self, query):
 		self.c.execute(query)
 		self.stored_result = False
 
 	def field_count(self):
+		if self.c.description is None:
+			return 0
 		return len(self.c.description)
 			
 	def store_result(self):
@@ -254,7 +263,7 @@ class sqlite_host(mysql_host):
 		return repr(s)[1:-1]
 	def escape_field(self, field):
 		print "todo: sqlite escape_field!"
-		return "`%s`" % field
+		return field
 	def escape_table(self, table):
-		return "`%s`" % table
+		return table
 		

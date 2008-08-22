@@ -804,7 +804,11 @@ class Emma:
 			if not table or not where:
 				show_message("delete record", "could not delete this record!?")
 				return
-			update_query = "delete from `%s` where %s limit 1" % (table, where)
+			if self.current_host.__class__.__name__ == "sqlite_host":
+				limit = ""
+			else:
+				limit = " limit 1"
+			update_query = "delete from `%s` where %s%s" % (table, where, limit)
 			if not self.current_host.query(update_query, encoding=q.encoding):
 				return
 		if not q.model.remove(row_iter):
