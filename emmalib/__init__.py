@@ -39,6 +39,14 @@ else:
 	from mysql_query_tab import *
 
 try:
+	import pysqlite2.dbapi2 as sqlite3
+	have_sqlite = True
+	from sqlite_host import *
+except:
+	print traceback.format_exc()
+	have_sqlite = False
+
+try:
 	import gtk
 	from gtk import keysyms
 	import gobject
@@ -46,6 +54,8 @@ try:
 	import gtk.glade
 except:
 	print "no gtk. you will not be able to start emma.", sys.exc_value
+
+
 
 import pprint
 
@@ -209,6 +219,12 @@ class Emma:
 				self.on_connection_ping
 			)
 		self.init_plugins()
+
+	def __getattr__(self, name):
+		widget = self.xml.get_widget(name)
+		if widget is None:
+			raise AttributeError(name)
+		return widget
 
 	def on_reload_plugins_activate(self, *args):
 		self.unload_plugins()
@@ -533,7 +549,8 @@ class Emma:
 		
 		for field, field_pos in zip(th.field_order, range(len(th.field_order))):
 			props = th.fields[field]
-			if pri_okay >= 0 and props[3] == "PRI":
+			if ((pri_okay >= 0 and props[3] == "PRI") or (
+				th.host.__class__.__name__ == "sqlite_host" and field.endswith("_id"))):
 				if possible_primary: possible_primary += ", "
 				possible_primary += field
 				if wildcard:
@@ -706,11 +723,16 @@ class Emma:
 		table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, col_num)
 		if force_update == False and new_value == value:
 			return
-		update_query = u"update %s set %s='%s' where %s limit 1" % (
+		if self.current_host.__class__.__name__ == "sqlite_host":
+			limit = ""
+		else:
+			limit = " limit 1"
+		update_query = u"update %s set %s='%s' where %s%s" % (
 			self.current_host.escape_table(table), 
 			self.current_host.escape_field(field), 
 			self.current_host.escape(new_value), 
-			where
+			where,
+			limit
 		)
 		if self.current_host.query(update_query, encoding=q.encoding):
 			print "set new value: %r" % new_value
@@ -1378,7 +1400,15 @@ the author knows no way to deselect this database. do you want to continue?""" %
 			start_display = time.time()
 			last_display = start_display
 			for row in result.fetch_row(0):
-				q.model.append(map(lambda f: f and f.decode(q.encoding, "replace"), row))
+				def toString(f):
+					if type(f) == str:
+						f = f.decode(q.encoding, "replace")
+					elif f == None:
+						pass
+					else:
+						f = str(f)
+					return f
+				q.model.append(map(toString, row))
 				cnt += 1;
 				if not cnt % 100 == 0: continue
 					
@@ -1865,6 +1895,11 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			self.xml.get_widget("new_database").set_sensitive(connected_host)
 			self.xml.get_widget("refresh_host").set_sensitive(connected_host)
 			menu = self.xml.get_widget("connection_menu")
+			sqllite = self.xml.get_widget("new_sqlite_connection")
+			if have_sqlite:
+				sqllite.show()
+			else:
+				sqllite.hide()
 		elif len(res[0]) == 2:
 			menu = self.xml.get_widget("database_popup")
 		elif len(res[0]) == 3:
@@ -2198,6 +2233,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 				self.xml.get_widget("cw_%s" % n).set_text("")
 			self.cw_mode = "new"
 			self.connection_window.show()
+		elif what == "new_sqlite_connection":
+			resp = self.sqlite_connection_dialog.run()
+			self.sqlite_connection_dialog.hide()
+			print "resp:", resp
+			if resp:
+				self.add_sqlite(self.sqlite_connection_dialog.get_filename())
+				self.save_config()
+
 		
 	def on_cw_apply(self, *args):
 		if self.cw_mode == "new":
@@ -2956,6 +2999,10 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 			value = self.config[name]
 			if not unpickled:
 				prefix = "connection_"
+				if name.startswith(prefix) and value == "::sqlite::":
+					filename = name[len(prefix):]
+					self.add_sqlite(filename)
+					continue
 				if name.startswith(prefix):
 					v = value.split(",")
 					port = ""
@@ -3043,6 +3090,11 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		
 	def add_mysql_host(self, name, hostname, port, user, password, database):
 		host = mysql_host(self.add_sql_log, self.add_msg_log, name, hostname, port, user, password, database, self.config["connect_timeout"])
+		iter = self.connections_model.append(None, [host])
+		host.set_update_ui(self.redraw_host, iter)
+	
+	def add_sqlite(self, filename):
+		host = sqlite_host(self.add_sql_log, self.add_msg_log, filename)
 		iter = self.connections_model.append(None, [host])
 		host.set_update_ui(self.redraw_host, iter)
 	
@@ -3157,6 +3209,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 
 			fields = db.status_headers
 			columns = [gobject.TYPE_STRING] * len(fields)
+			if not columns:
+				return
 			self.tables_model = gtk.ListStore(*columns);
 			self.tables_tv.set_model(self.tables_model);
 			id = 0
@@ -3170,7 +3224,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
 		if self.tables_count == len(keys): return
 		self.tables_count = len(keys)
 		keys.sort()
-		self.tables_model.clear()
+		if self.tables_model:
+			self.tables_model.clear()
 		for name in keys:
 			table = db.tables[name]
 			self.tables_model.append(table.props)
