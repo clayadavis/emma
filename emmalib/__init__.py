@@ -519,6 +519,7 @@ class Emma:
         # find table handle!
         tries = 0
         new_tables = []
+        self.last_th = None
         while 1:
             try:
                 th = self.current_host.current_db.tables[table]
@@ -547,7 +548,8 @@ class Emma:
             row_iter = self.current_query.model.get_iter(path)
             
         # get unique where_clause
-        
+        self._kv_list = []
+        self.last_th = th
         for field, field_pos in zip(th.field_order, range(len(th.field_order))):
             props = th.fields[field]
             if ((pri_okay >= 0 and props[3] == "PRI") or (
@@ -568,6 +570,7 @@ class Emma:
                         value = self.current_query.model.get_value(row_iter, c)
                         if primary: primary += " and "
                         primary += "`%s`='%s'" % (field, value)
+                        self._kv_list.append((field, value))
             if uni_okay >= 0 and props[3] == "UNI":
                 if possible_unique: possible_unique += ", "
                 possible_unique += field
@@ -585,6 +588,7 @@ class Emma:
                         value = self.current_query.model.get_value(row_iter, c)
                         if unique: unique += " and "
                         unique += "`%s`='%s'" % (field, value)
+                        self._kv_list.append((field, value))
                         
         if uni_okay < 1 and pri_okay < 1:
             possible_key = "(i can't see any key-fields in this table...)"
@@ -853,7 +857,19 @@ class Emma:
             query += "%s=%s" % (self.current_host.escape_field(field), value)
         if query: 
             table, where, field, value, row_iter, fields = self.get_unique_where(q.last_source, return_fields=True)
-            update_query = "insert into `%s` set %s" % (table, query)
+            if self.last_th.host.__class__.__name__ == "sqlite_host":
+                print (table, where, field, value, row_iter, fields)
+                keys = []
+                values = []
+                for key, value in self._kv_list:
+                    keys.append(key)
+                    if type(value) == str:
+                        values.append("'%s'" % value)
+                    else:
+                        values.append("%s" % value)
+                update_query = "insert into `%s` (%s) values (%s)" % (table, ", ".join(keys), ", ".join(values))
+            else:
+                update_query = "insert into `%s` set %s" % (table, query)
             if not self.current_host.query(update_query, encoding=q.encoding):
                 return False
                 
