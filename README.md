@@ -1,4 +1,5 @@
 emma: extendable MySQL managing assistant 
+====
 emma is a graphical toolkit for MySQL database developers and administrators, it is the successor of yamysqlfront. 
  
  Its main features are: 
@@ -8,4 +9,3 @@ emma is a graphical toolkit for MySQL database developers and administrators, it
    tab-completion + Automatic SQL statement formatting 
  * Export to CSV files 
  * Multiple simultaneously opened MySQL connection
-====
